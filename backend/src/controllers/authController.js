@@ -64,3 +64,10 @@ exports.login = async (req, res) => {
 
   return res.json({ token });
 };
+
+exports.me = async (req, res) => {
+  return res.json({
+    id: req.user.id,
+    email: req.user.email
+  });
+};
