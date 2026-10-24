@@ -1,4 +1,8 @@
-const companies = [];
+const { readJson, writeJson } = require("../utils/fileStore");
+
+const companies = readJson("companies.json", []);
+
+const persistCompanies = () => writeJson("companies.json", companies);
 
 module.exports = {
   getAll() {
@@ -16,6 +20,7 @@ module.exports = {
     };
 
     companies.push(company);
+    persistCompanies();
 
     return company;
   },
@@ -32,6 +37,7 @@ module.exports = {
       ...data
     };
 
+    persistCompanies();
     return companies[index];
   },
 
@@ -43,6 +49,7 @@ module.exports = {
     if (index === -1) return false;
 
     companies.splice(index, 1);
+    persistCompanies();
 
     return true;
   }

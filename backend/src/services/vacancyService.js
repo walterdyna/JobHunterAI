@@ -1,4 +1,8 @@
-const vacancies = [];
+const { readJson, writeJson } = require("../utils/fileStore");
+
+const vacancies = readJson("vacancies.json", []);
+
+const persistVacancies = () => writeJson("vacancies.json", vacancies);
 
 module.exports = {
   getAll() {
@@ -16,6 +20,7 @@ module.exports = {
     };
 
     vacancies.push(vacancy);
+    persistVacancies();
 
     return vacancy;
   },
@@ -32,6 +37,7 @@ module.exports = {
       ...data
     };
 
+    persistVacancies();
     return vacancies[index];
   },
 
@@ -43,6 +49,7 @@ module.exports = {
     if (index === -1) return false;
 
     vacancies.splice(index, 1);
+    persistVacancies();
 
     return true;
   }

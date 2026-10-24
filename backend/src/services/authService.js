@@ -1,4 +1,8 @@
-const users = [];
+const { readJson, writeJson } = require("../utils/fileStore");
+
+const users = readJson("users.json", []);
+
+const persistUsers = () => writeJson("users.json", users);
 
 module.exports = {
   users,
@@ -9,6 +13,7 @@ module.exports = {
 
   create(user) {
     users.push(user);
+    persistUsers();
     return user;
   }
 };
