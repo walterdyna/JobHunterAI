@@ -4,5 +4,17 @@
     "name": "Walter",
     "email": "walter.persist@test.com",
     "password": "$2b$10$X.szHCNWoR.qf0MLCm2x5OU0Nja07mIwaqK8.XK7SVcGLd6bqVqo."
+  },
+  {
+    "id": 1792811514588,
+    "name": "Teste JobHunter",
+    "email": "teste@jobhunter.ai",
+    "password": "$2b$10$U27OcNR/5eF1.uTMRTFpVOe1NfP/25xz7QlF4NT7l3sPJYGeuKSxG"
+  },
+  {
+    "id": 1792812959208,
+    "name": "Probe",
+    "email": "probe@test.com",
+    "password": "$2b$10$M.1dCGNrYFxrz7x/6zUaO.Zd81k.2q6ayEF3IhGHZuMl4mMGuuMrG"
   }
 ]

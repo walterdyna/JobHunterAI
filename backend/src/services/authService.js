@@ -1,19 +1,29 @@
-const { readJson, writeJson } = require("../utils/fileStore");
-
-const users = readJson("users.json", []);
-
-const persistUsers = () => writeJson("users.json", users);
+const { get, run } = require("../config/database");
 
 module.exports = {
-  users,
-
   findByEmail(email) {
-    return users.find(user => user.email === email);
+    return get(
+      "SELECT * FROM users WHERE lower(email) = lower(?)",
+      [email]
+    );
+  },
+
+  findById(id) {
+    return get("SELECT * FROM users WHERE id = ?", [id]);
   },
 
   create(user) {
-    users.push(user);
-    persistUsers();
-    return user;
+    const result = run(
+      "INSERT INTO users (name, email, password, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      [
+        user.name,
+        user.email,
+        user.password,
+        new Date().toISOString(),
+        new Date().toISOString()
+      ]
+    );
+
+    return this.findById(Number(result.lastInsertRowid));
   }
 };

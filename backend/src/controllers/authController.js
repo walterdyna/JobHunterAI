@@ -1,9 +1,14 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authService = require("../services/authService");
+const env = require("../config/environment");
 
 exports.register = async (req, res) => {
   const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "Nome, e-mail e senha sao obrigatorios" });
+  }
 
   const existingUser = authService.findByEmail(email);
 
@@ -14,9 +19,7 @@ exports.register = async (req, res) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-
   const user = authService.create({
-    id: Date.now(),
     name,
     email,
     password: hashedPassword
@@ -40,10 +43,7 @@ exports.login = async (req, res) => {
     });
   }
 
-  const valid = await bcrypt.compare(
-    password,
-    user.password
-  );
+  const valid = await bcrypt.compare(password, user.password);
 
   if (!valid) {
     return res.status(401).json({
@@ -51,16 +51,13 @@ exports.login = async (req, res) => {
     });
   }
 
-  const token = jwt.sign(
-    {
-      id: user.id,
-      email: user.email
-    },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "1h"
-    }
-  );
+  const token = jwt.sign({
+    id: user.id,
+    name: user.name,
+    email: user.email
+  }, env.jwt.secret, {
+    expiresIn: "12h"
+  });
 
   return res.json({ token });
 };
@@ -68,6 +65,7 @@ exports.login = async (req, res) => {
 exports.me = async (req, res) => {
   return res.json({
     id: req.user.id,
+    name: req.user.name,
     email: req.user.email
   });
 };

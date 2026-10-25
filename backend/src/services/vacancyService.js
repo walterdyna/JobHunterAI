@@ -1,56 +1,55 @@
-const { readJson, writeJson } = require("../utils/fileStore");
-
-const vacancies = readJson("vacancies.json", []);
-
-const persistVacancies = () => writeJson("vacancies.json", vacancies);
+const { all, get, run } = require("../config/database");
 
 module.exports = {
-  getAll() {
-    return vacancies;
+  getAll(userId) {
+    return all("SELECT * FROM vacancies WHERE user_id = ? ORDER BY created_at DESC", [userId]);
   },
 
-  getById(id) {
-    return vacancies.find(v => v.id === Number(id));
+  getById(id, userId) {
+    return get("SELECT * FROM vacancies WHERE id = ? AND user_id = ?", [id, userId]);
   },
 
-  create(data) {
-    const vacancy = {
-      id: Date.now(),
-      ...data
-    };
-
-    vacancies.push(vacancy);
-    persistVacancies();
-
-    return vacancy;
-  },
-
-  update(id, data) {
-    const index = vacancies.findIndex(
-      v => v.id === Number(id)
+  create(data, userId) {
+    const createdAt = new Date().toISOString();
+    const result = run(
+      "INSERT INTO vacancies (user_id, title, company, salary, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        userId,
+        data.title,
+        data.company,
+        Number(data.salary || 0),
+        createdAt,
+        createdAt
+      ]
     );
 
-    if (index === -1) return null;
-
-    vacancies[index] = {
-      ...vacancies[index],
-      ...data
-    };
-
-    persistVacancies();
-    return vacancies[index];
+    return this.getById(Number(result.lastInsertRowid), userId);
   },
 
-  delete(id) {
-    const index = vacancies.findIndex(
-      v => v.id === Number(id)
+  update(id, data, userId) {
+    const existing = this.getById(id, userId);
+    if (!existing) return null;
+
+    const payload = {
+      title: data.title ?? existing.title,
+      company: data.company ?? existing.company,
+      salary: Number(data.salary ?? existing.salary ?? 0),
+      updated_at: new Date().toISOString()
+    };
+
+    run(
+      "UPDATE vacancies SET title = ?, company = ?, salary = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+      [payload.title, payload.company, payload.salary, payload.updated_at, id, userId]
     );
 
-    if (index === -1) return false;
+    return this.getById(id, userId);
+  },
 
-    vacancies.splice(index, 1);
-    persistVacancies();
+  delete(id, userId) {
+    const existing = this.getById(id, userId);
+    if (!existing) return false;
 
-    return true;
+    const result = run("DELETE FROM vacancies WHERE id = ? AND user_id = ?", [id, userId]);
+    return Number(result.changes || 0) > 0;
   }
 };
