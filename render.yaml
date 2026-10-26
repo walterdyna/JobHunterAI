@@ -3,7 +3,7 @@ services:
     name: jobhunter-ai
     runtime: node
     plan: free
-    buildCommand: npm ci --prefix frontend && npm run build --prefix frontend && npm ci --prefix backend
+    buildCommand: npm ci --include=dev --prefix frontend && npm run build --prefix frontend && npm ci --prefix backend
     startCommand: npm start --prefix backend
     healthCheckPath: /api/health
     envVars:
