@@ -18,6 +18,8 @@ npm install
 npm run dev
 ```
 
+Configure `backend/.env` com `JWT_SECRET` aleatório de pelo menos 32 caracteres antes de iniciar. Há um modelo em [`backend/.env.example`](./backend/.env.example); nunca publique o arquivo `.env`.
+
 ### Testes automatizados do backend
 ```bash
 cd backend
@@ -59,7 +61,7 @@ export OLLAMA_MODEL=llama3.1
 ## Funcionalidades principais
 - Cadastro e login do usuário
 - Gestão de empresas e vagas
-- Importação revisável de até 10 arquivos por lote (PDF pesquisável, TXT, Markdown, CSV ou JSON; até 10 MB por arquivo)
+- Importação revisável de até 10 arquivos por lote (PDF pesquisável, TXT, Markdown, CSV ou JSON; até 20 MB combinados por lote)
 - Geração de currículo adaptado para a vaga, com evidências de correspondência e lacunas
 - Geração de carta de apresentação personalizada
 - Estratégia de candidatura com plano de ação
@@ -79,3 +81,9 @@ A extração do currículo mostra um rascunho para revisão; só após confirmar
 ## Acesso local
 - Frontend: http://localhost:5173
 - Backend: http://localhost:3001
+
+## Segurança e publicação
+
+Para publicar sem Oracle, consulte [`DEPLOYMENT_RENDER_SUPABASE.md`](./DEPLOYMENT_RENDER_SUPABASE.md) (Render + Supabase). Essa opção exige configurar PostgreSQL e tem suspensão por inatividade/limites no plano gratuito. [`DEPLOYMENT.md`](./DEPLOYMENT.md) documenta também a opção de VM própria.
+
+A automação de navegador é desativada por padrão em produção; login, revisão dos dados e envio continuam sob controle do candidato. A pontuação de aderência não representa garantia de contratação.

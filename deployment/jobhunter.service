@@ -1,0 +1,21 @@
+[Unit]
+Description=JobHunter AI web application
+After=network.target
+
+[Service]
+Type=simple
+User=jobhunter
+Group=jobhunter
+WorkingDirectory=/opt/jobhunter/backend
+EnvironmentFile=/etc/jobhunter/job.env
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/jobhunter
+
+[Install]
+WantedBy=multi-user.target

@@ -1,19 +1,19 @@
 const { get, run } = require("../config/database");
 
 module.exports = {
-  findByEmail(email) {
+  async findByEmail(email) {
     return get(
       "SELECT * FROM users WHERE lower(email) = lower(?)",
       [email]
     );
   },
 
-  findById(id) {
+  async findById(id) {
     return get("SELECT * FROM users WHERE id = ?", [id]);
   },
 
-  create(user) {
-    const result = run(
+  async create(user) {
+    const result = await run(
       "INSERT INTO users (name, email, password, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
       [
         user.name,

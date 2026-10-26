@@ -5,7 +5,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
-router.post("/generate", aiController.generate);
+router.post("/generate", authMiddleware, aiController.generate);
 router.post("/automation/run", authMiddleware, aiController.runAutomation);
 router.get("/automation/status", authMiddleware, aiController.getAutomationStatus);
 router.post("/automation/stop", authMiddleware, aiController.stopAutomation);

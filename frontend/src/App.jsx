@@ -4,7 +4,7 @@ import "./App.css";
 import "./styles/ai-assistant.css";
 import { generateCareerAssets, getAutomationStatus, runAutomation, stopAutomation } from "./services/jobhunterApi";
 
-const API_URL = "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const initialAuthForm = {
   name: "",
@@ -410,6 +410,9 @@ function App() {
       if (files.length > 10) {
         throw new Error("Importe no máximo 10 arquivos por vez.");
       }
+      if (files.reduce((total, file) => total + file.size, 0) > 20 * 1024 * 1024) {
+        throw new Error("O tamanho combinado dos arquivos não pode exceder 20 MB.");
+      }
 
       const importedDocuments = [];
       const importedTexts = [];
@@ -426,6 +429,9 @@ function App() {
       }
 
       const combinedText = importedTexts.join("\n\n");
+      if (combinedText.length > 500000) {
+        throw new Error("O texto extraído excede o limite de 500 mil caracteres por lote.");
+      }
       setPendingProfileImport({
         kind,
         documents: importedDocuments,
@@ -662,7 +668,7 @@ function App() {
     setAiResult(null);
 
     try {
-      const data = await generateCareerAssets(aiProfile);
+      const data = await generateCareerAssets(aiProfile, { headers: authHeaders });
       setAiResult(data);
       setSuccess("A IA montou o currículo e a carta de apresentação.");
     } catch (errorResponse) {

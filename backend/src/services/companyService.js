@@ -1,17 +1,17 @@
 const { all, get, run } = require("../config/database");
 
 module.exports = {
-  getAll(userId) {
+  async getAll(userId) {
     return all("SELECT * FROM companies WHERE user_id = ? ORDER BY created_at DESC", [userId]);
   },
 
-  getById(id, userId) {
+  async getById(id, userId) {
     return get("SELECT * FROM companies WHERE id = ? AND user_id = ?", [id, userId]);
   },
 
-  create(data, userId) {
+  async create(data, userId) {
     const createdAt = new Date().toISOString();
-    const result = run(
+    const result = await run(
       "INSERT INTO companies (user_id, name, city, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
       [
         userId,
@@ -25,8 +25,8 @@ module.exports = {
     return this.getById(Number(result.lastInsertRowid), userId);
   },
 
-  update(id, data, userId) {
-    const existing = this.getById(id, userId);
+  async update(id, data, userId) {
+    const existing = await this.getById(id, userId);
     if (!existing) return null;
 
     const payload = {
@@ -35,7 +35,7 @@ module.exports = {
       updated_at: new Date().toISOString()
     };
 
-    run(
+    await run(
       "UPDATE companies SET name = ?, city = ?, updated_at = ? WHERE id = ? AND user_id = ?",
       [payload.name, payload.city, payload.updated_at, id, userId]
     );
@@ -43,11 +43,11 @@ module.exports = {
     return this.getById(id, userId);
   },
 
-  delete(id, userId) {
-    const existing = this.getById(id, userId);
+  async delete(id, userId) {
+    const existing = await this.getById(id, userId);
     if (!existing) return false;
 
-    const result = run("DELETE FROM companies WHERE id = ? AND user_id = ?", [id, userId]);
+    const result = await run("DELETE FROM companies WHERE id = ? AND user_id = ?", [id, userId]);
     return Number(result.changes || 0) > 0;
   }
 };

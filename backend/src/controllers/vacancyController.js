@@ -1,11 +1,11 @@
 const vacancyService = require("../services/vacancyService");
 
-exports.getAll = (req, res) => {
-  res.json(vacancyService.getAll(req.user.id));
+exports.getAll = async (req, res) => {
+  res.json(await vacancyService.getAll(req.user.id));
 };
 
-exports.getById = (req, res) => {
-  const vacancy = vacancyService.getById(req.params.id, req.user.id);
+exports.getById = async (req, res) => {
+  const vacancy = await vacancyService.getById(req.params.id, req.user.id);
 
   if (!vacancy) {
     return res.status(404).json({
@@ -16,13 +16,13 @@ exports.getById = (req, res) => {
   res.json(vacancy);
 };
 
-exports.create = (req, res) => {
-  const vacancy = vacancyService.create(req.body, req.user.id);
+exports.create = async (req, res) => {
+  const vacancy = await vacancyService.create(req.body, req.user.id);
   res.status(201).json(vacancy);
 };
 
-exports.update = (req, res) => {
-  const vacancy = vacancyService.update(req.params.id, req.body, req.user.id);
+exports.update = async (req, res) => {
+  const vacancy = await vacancyService.update(req.params.id, req.body, req.user.id);
 
   if (!vacancy) {
     return res.status(404).json({
@@ -33,8 +33,8 @@ exports.update = (req, res) => {
   res.json(vacancy);
 };
 
-exports.delete = (req, res) => {
-  const removed = vacancyService.delete(req.params.id, req.user.id);
+exports.delete = async (req, res) => {
+  const removed = await vacancyService.delete(req.params.id, req.user.id);
 
   if (!removed) {
     return res.status(404).json({

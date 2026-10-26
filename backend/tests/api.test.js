@@ -1,17 +1,22 @@
 const assert = require("node:assert/strict");
-const { spawn } = require("node:child_process");
+const { spawn, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { after, before, test } = require("node:test");
 const { createServer } = require("node:net");
 const { analyzeJobFit, buildFallbackResponse, extractKeywords } = require("../src/services/aiService");
-const { normalizeAndValidateUrls } = require("../src/services/browserSessionService");
+const {
+  isPrivateHost,
+  normalizeAndValidateUrls,
+  validateRequestUrl
+} = require("../src/services/browserSessionService");
 
 const backendDirectory = path.join(__dirname, "..");
 let serverProcess;
 let temporaryDirectory;
 let baseUrl;
+let serverErrorOutput = "";
 
 async function findAvailablePort() {
   const server = createServer();
@@ -36,6 +41,7 @@ async function request(pathname, { method = "GET", token, body } = {}) {
   const text = await response.text();
   return {
     status: response.status,
+    headers: response.headers,
     body: text ? JSON.parse(text) : null
   };
 }
@@ -51,15 +57,19 @@ before(async () => {
       PORT: String(port),
       DB_CLIENT: "sqlite",
       DB_FILE: path.join(temporaryDirectory, "test.sqlite"),
-      JWT_SECRET: "jobhunter-automated-test-secret",
+      JWT_SECRET: "jobhunter-automated-test-secret-with-64-char-padding-0123456789",
       OLLAMA_BASE_URL: "http://127.0.0.1:1/api/generate"
     },
-    stdio: "ignore"
+    stdio: ["ignore", "ignore", "pipe"]
+  });
+  serverProcess.stderr.setEncoding("utf8");
+  serverProcess.stderr.on("data", (chunk) => {
+    serverErrorOutput += chunk;
   });
 
   for (let attempt = 0; attempt < 100; attempt += 1) {
     if (serverProcess.exitCode !== null) {
-      throw new Error(`API de teste encerrou antes de iniciar (código ${serverProcess.exitCode}).`);
+      throw new Error(`API de teste encerrou antes de iniciar (código ${serverProcess.exitCode}): ${serverErrorOutput}`);
     }
     try {
       const health = await fetch(`${baseUrl}/api/health`);
@@ -108,8 +118,37 @@ test("API protects accounts, isolates application history, and rejects unsafe au
   assert.ok(firstToken);
   assert.ok(secondToken);
 
+  const companyCreated = await request("/api/companies", {
+    method: "POST",
+    token: firstToken,
+    body: { name: "Example Co", city: "Vitória" }
+  });
+  assert.equal(companyCreated.status, 201);
+  assert.equal(companyCreated.body.name, "Example Co");
+
+  const vacancyCreated = await request("/api/vacancies", {
+    method: "POST",
+    token: firstToken,
+    body: { title: "Backend Developer", company: "Example Co", salary: 5000 }
+  });
+  assert.equal(vacancyCreated.status, 201);
+  assert.equal(vacancyCreated.body.title, "Backend Developer");
+
+  const vacancyUpdated = await request(`/api/vacancies/${vacancyCreated.body.id}`, {
+    method: "PUT",
+    token: firstToken,
+    body: { title: "Senior Backend Developer" }
+  });
+  assert.equal(vacancyUpdated.status, 200);
+  assert.equal(vacancyUpdated.body.title, "Senior Backend Developer");
+
   const unauthenticatedApplications = await request("/api/applications");
   assert.equal(unauthenticatedApplications.status, 401);
+  const anonymousAiGeneration = await request("/api/ai/generate", {
+    method: "POST",
+    body: { fullName: "Candidate One" }
+  });
+  assert.equal(anonymousAiGeneration.status, 401);
 
   const created = await request("/api/applications", {
     method: "POST",
@@ -128,6 +167,8 @@ test("API protects accounts, isolates application history, and rejects unsafe au
   assert.equal(created.body.resume_snapshot, "Currículo preparado para esta vaga.");
   assert.equal(created.body.cover_letter_snapshot, "Carta preparada para esta vaga.");
   assert.equal(created.body.fit_score, 82);
+  assert.equal(created.headers.get("content-security-policy") !== null, true);
+  assert.equal(created.headers.get("x-content-type-options"), "nosniff");
 
   const invalidFitScore = await request("/api/applications", {
     method: "POST",
@@ -156,6 +197,7 @@ test("API protects accounts, isolates application history, and rejects unsafe au
 
   const generated = await request("/api/ai/generate", {
     method: "POST",
+    token: firstToken,
     body: {
       fullName: "Candidate One",
       targetRole: "Desenvolvedor Node.js",
@@ -176,6 +218,13 @@ test("API protects accounts, isolates application history, and rejects unsafe au
   assert.match(generated.body.summary.match, /não representa probabilidade de contratação/i);
   assert.doesNotMatch(generated.body.resume, /Resumo profissional não informado|Experiência não informada/);
   assert.doesNotMatch(generated.body.resume, /melhoria contínua|seu-perfil|seu-usuario/i);
+
+  const failedLogins = await Promise.all(Array.from({ length: 7 }, () => request("/api/auth/login", {
+    method: "POST",
+    body: { email: "one@example.test", password: "incorrect-password" }
+  })));
+  assert.ok(failedLogins.slice(0, 6).every((result) => result.status === 401));
+  assert.equal(failedLogins[6].status, 429);
 });
 
 test("resume matching uses normalized keywords and preserves confirmed language limits", () => {
@@ -199,6 +248,46 @@ test("browser URL validation allows approved HTTPS portals and blocks unsafe tar
   assert.throws(() => normalizeAndValidateUrls(["https://example.com"]), /Domínio não autorizado/);
 });
 
+test("browser request validation blocks redirects to non-portal domains and private DNS answers", async () => {
+  const publicLookup = async () => [{ address: "93.184.216.34", family: 4 }];
+  const privateLookup = async () => [{ address: "10.0.0.8", family: 4 }];
+
+  await assert.rejects(
+    validateRequestUrl("https://attacker.example/", publicLookup),
+    /Destino externo bloqueado/
+  );
+  await assert.rejects(
+    validateRequestUrl("https://jobs.linkedin.com/", privateLookup),
+    /endereço privado/
+  );
+  await assert.rejects(
+    validateRequestUrl("http://www.linkedin.com/", publicLookup),
+    /Destino externo bloqueado/
+  );
+  await validateRequestUrl("https://jobs.linkedin.com/", publicLookup);
+});
+
+test("private host detection blocks IPv4, IPv6, mapped IPv6, and reserved ranges", () => {
+  for (const host of [
+    "127.0.0.1",
+    "10.0.0.1",
+    "100.64.0.1",
+    "169.254.1.1",
+    "192.168.1.1",
+    "::1",
+    "::",
+    "fc00::1",
+    "fe80::1",
+    "ff02::1",
+    "[::ffff:7f00:1]",
+    "::ffff:192.168.0.1"
+  ]) {
+    assert.equal(isPrivateHost(host), true, `${host} must be treated as non-public`);
+  }
+  assert.equal(isPrivateHost("8.8.8.8"), false);
+  assert.equal(isPrivateHost("2001:4860:4860::8888"), false);
+});
+
 test("job fit weights mandatory requirements above preferred qualifications", () => {
   const fit = analyzeJobFit(
     "Requisito obrigatório: Node.js e React. Diferencial desejável: AWS.",
@@ -208,4 +297,17 @@ test("job fit weights mandatory requirements above preferred qualifications", ()
   assert.ok(fit.missingRequired.includes("react"));
   assert.ok(fit.missingPreferred.includes("aws"));
   assert.ok(fit.score < 70);
+});
+
+test("backend refuses to load without a strong JWT secret", () => {
+  const result = spawnSync(process.execPath, [
+    "-e",
+    "process.env.JWT_SECRET=''; require('./src/config/environment');"
+  ], {
+    cwd: backendDirectory,
+    env: { ...process.env, JWT_SECRET: "" },
+    encoding: "utf8"
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /JWT_SECRET obrigatório/);
 });

@@ -1,11 +1,11 @@
 const companyService = require("../services/companyService");
 
-exports.getAll = (req, res) => {
-  res.json(companyService.getAll(req.user.id));
+exports.getAll = async (req, res) => {
+  res.json(await companyService.getAll(req.user.id));
 };
 
-exports.getById = (req, res) => {
-  const company = companyService.getById(req.params.id, req.user.id);
+exports.getById = async (req, res) => {
+  const company = await companyService.getById(req.params.id, req.user.id);
 
   if (!company) {
     return res.status(404).json({
@@ -16,13 +16,13 @@ exports.getById = (req, res) => {
   res.json(company);
 };
 
-exports.create = (req, res) => {
-  const company = companyService.create(req.body, req.user.id);
+exports.create = async (req, res) => {
+  const company = await companyService.create(req.body, req.user.id);
   res.status(201).json(company);
 };
 
-exports.update = (req, res) => {
-  const company = companyService.update(req.params.id, req.body, req.user.id);
+exports.update = async (req, res) => {
+  const company = await companyService.update(req.params.id, req.body, req.user.id);
 
   if (!company) {
     return res.status(404).json({
@@ -33,8 +33,8 @@ exports.update = (req, res) => {
   res.json(company);
 };
 
-exports.delete = (req, res) => {
-  const removed = companyService.delete(req.params.id, req.user.id);
+exports.delete = async (req, res) => {
+  const removed = await companyService.delete(req.params.id, req.user.id);
 
   if (!removed) {
     return res.status(404).json({

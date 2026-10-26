@@ -1,9 +1,9 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "";
 
-export async function generateCareerAssets(payload) {
-  const response = await axios.post(`${API_URL}/api/ai/generate`, payload);
+export async function generateCareerAssets(payload, config = {}) {
+  const response = await axios.post(`${API_URL}/api/ai/generate`, payload, config);
   return response.data;
 }
 

@@ -1,5 +1,6 @@
 const aiService = require("../services/aiService");
 const automationService = require("../services/automationService");
+const env = require("../config/environment");
 
 exports.generate = async (req, res) => {
   try {
@@ -16,6 +17,12 @@ exports.generate = async (req, res) => {
 };
 
 exports.runAutomation = async (req, res) => {
+  if (!env.automationEnabled) {
+    return res.status(503).json({
+      message: "A automação de navegador está desativada neste ambiente."
+    });
+  }
+
   try {
     const { profile, urls, preferences } = req.body || {};
     const result = await automationService.runAutomation(profile || {}, urls || [], preferences || {}, req.user.id);

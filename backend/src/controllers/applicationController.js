@@ -1,11 +1,11 @@
 const applicationService = require("../services/applicationService");
 
-exports.getAll = (req, res) => {
-  const applications = applicationService.getAll(req.user.id);
+exports.getAll = async (req, res) => {
+  const applications = await applicationService.getAll(req.user.id);
   res.json(applications);
 };
 
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
   const { resumeSnapshot, coverLetterSnapshot, fitScore } = req.body || {};
   if ((resumeSnapshot && String(resumeSnapshot).length > 60000)
     || (coverLetterSnapshot && String(coverLetterSnapshot).length > 20000)) {
@@ -15,12 +15,12 @@ exports.create = (req, res) => {
     return res.status(400).json({ message: "O índice de aderência deve ser um inteiro entre 0 e 100." });
   }
 
-  const payload = applicationService.create(req.body, req.user.id);
+  const payload = await applicationService.create(req.body, req.user.id);
   res.status(201).json(payload);
 };
 
-exports.updateStatus = (req, res) => {
-  const application = applicationService.updateStatus(req.params.id, req.body.status, req.user.id);
+exports.updateStatus = async (req, res) => {
+  const application = await applicationService.updateStatus(req.params.id, req.body.status, req.user.id);
 
   if (!application) {
     return res.status(404).json({ message: "Candidatura nao encontrada" });
@@ -29,8 +29,8 @@ exports.updateStatus = (req, res) => {
   return res.json(application);
 };
 
-exports.delete = (req, res) => {
-  const removed = applicationService.delete(req.params.id, req.user.id);
+exports.delete = async (req, res) => {
+  const removed = await applicationService.delete(req.params.id, req.user.id);
 
   if (!removed) {
     return res.status(404).json({ message: "Candidatura nao encontrada" });

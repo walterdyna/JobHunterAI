@@ -10,7 +10,7 @@ exports.register = async (req, res) => {
     return res.status(400).json({ message: "Nome, e-mail e senha sao obrigatorios" });
   }
 
-  const existingUser = authService.findByEmail(email);
+  const existingUser = await authService.findByEmail(email);
 
   if (existingUser) {
     return res.status(400).json({
@@ -19,7 +19,7 @@ exports.register = async (req, res) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const user = authService.create({
+  const user = await authService.create({
     name,
     email,
     password: hashedPassword
@@ -35,7 +35,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
-  const user = authService.findByEmail(email);
+  const user = await authService.findByEmail(email);
 
   if (!user) {
     return res.status(401).json({
