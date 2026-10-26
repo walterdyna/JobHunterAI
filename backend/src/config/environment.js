@@ -20,6 +20,7 @@ module.exports = {
   db: {
     client: process.env.DB_CLIENT || "sqlite",
     connectionString: process.env.DATABASE_URL,
+    sslCaPath: process.env.DATABASE_SSL_CA_PATH,
     host: process.env.DB_HOST || "localhost",
     port: Number(process.env.DB_PORT || 5432),
     database: process.env.DB_NAME || "jobhunter",

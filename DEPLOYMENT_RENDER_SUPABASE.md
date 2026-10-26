@@ -14,9 +14,11 @@ Essa opção mantém o backend Express atual no Render e usa o PostgreSQL persis
 1. Crie um projeto Supabase Free. Em **Connect**, copie a connection string PostgreSQL do **Session pooler** (IPv4 compatível), não publique nem envie essa URL em mensagens. A senha do banco deve estar codificada corretamente para URL.
 2. Crie uma conta Render e conecte o repositório GitHub. Como os dados locais de usuários e SQLite foram retirados do Git, o deploy começa com uma base vazia; não envie os arquivos locais de dados.
 3. No Render, crie um Web Service e use o Blueprint `render.yaml` deste repositório. Se a interface perguntar, confirme o plano Free.
-4. Cadastre `DATABASE_URL` nas variáveis do serviço usando a connection string do Supabase. O Blueprint gera um `JWT_SECRET` aleatório e configura `NODE_ENV=production`, `HOST=0.0.0.0`, `DB_CLIENT=postgres` e automação desativada.
-5. Inicie o deploy. O backend cria o schema/tabelas ausentes no primeiro startup. Acompanhe os logs e o health check `/api/health`.
-6. Abra a URL `*.onrender.com` gerada pelo Render. O frontend é construído e servido pelo próprio backend. HTTPS é fornecido pelo domínio padrão do Render. Não é obrigatório comprar domínio próprio.
+4. No Supabase, abra **Database > Settings > SSL Configuration** e baixe o certificado CA do projeto.
+5. No Render, abra o serviço **Environment > Secret Files** e adicione o certificado baixado no caminho `/etc/secrets/supabase-ca.crt`.
+6. Cadastre `DATABASE_URL` nas variáveis do serviço usando a connection string do Supabase. O Blueprint configura `DATABASE_SSL_CA_PATH=/etc/secrets/supabase-ca.crt`, gera um `JWT_SECRET` aleatório e define `NODE_ENV=production`, `HOST=0.0.0.0`, `DB_CLIENT=postgres` e automação desativada.
+7. Inicie o deploy. O backend valida o certificado TLS do PostgreSQL, cria o schema/tabelas ausentes no primeiro startup e falha explicitamente se o CA não estiver configurado. Acompanhe os logs e o health check `/api/health`.
+8. Abra a URL `*.onrender.com` gerada pelo Render. O frontend é construído e servido pelo próprio backend. HTTPS é fornecido pelo domínio padrão do Render. Não é obrigatório comprar domínio próprio.
 
 ## Depois do primeiro deploy
 
@@ -26,3 +28,5 @@ Essa opção mantém o backend Express atual no Render e usa o PostgreSQL persis
 - Configure alertas e limites de uso. Não habilite upgrades pagos sem autorização explícita do proprietário.
 
 O deploy efetivo exige que o usuário crie os projetos/contas e conecte o repositório. Nunca compartilhe `DATABASE_URL`, senha do banco nem tokens de conta no chat.
+
+Se uma connection string já foi compartilhada em um chat, considere a senha comprometida: redefina-a no Supabase e atualize `DATABASE_URL` no Render antes de continuar. Não reutilize a senha exposta.

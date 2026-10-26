@@ -12,6 +12,10 @@ if (isPostgres && !env.db.connectionString) {
   throw new Error("DATABASE_URL obrigatória quando DB_CLIENT=postgres.");
 }
 
+if (isPostgres && !env.db.sslCaPath) {
+  throw new Error("DATABASE_SSL_CA_PATH obrigatória para validar o certificado TLS do PostgreSQL.");
+}
+
 const dbDir = path.join(__dirname, "..", "..", "database");
 let db;
 let pool;
@@ -141,9 +145,13 @@ if (isPostgres) {
   const { Pool } = require("pg");
   const databaseUrl = new URL(env.db.connectionString);
   databaseUrl.searchParams.delete("sslmode");
+  const sslCa = fs.readFileSync(env.db.sslCaPath, "utf8");
+  if (!sslCa.includes("-----BEGIN CERTIFICATE-----")) {
+    throw new Error("O arquivo DATABASE_SSL_CA_PATH não contém um certificado PEM válido.");
+  }
   pool = new Pool({
     connectionString: databaseUrl.toString(),
-    ssl: { rejectUnauthorized: true },
+    ssl: { ca: sslCa, rejectUnauthorized: true },
     max: 5,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000
