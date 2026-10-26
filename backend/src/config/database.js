@@ -12,10 +12,6 @@ if (isPostgres && !env.db.connectionString) {
   throw new Error("DATABASE_URL obrigatória quando DB_CLIENT=postgres.");
 }
 
-if (isPostgres && !env.db.sslCaPath) {
-  throw new Error("DATABASE_SSL_CA_PATH obrigatória para validar o certificado TLS do PostgreSQL.");
-}
-
 const dbDir = path.join(__dirname, "..", "..", "database");
 let db;
 let pool;
