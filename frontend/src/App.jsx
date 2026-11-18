@@ -61,6 +61,20 @@ const jobSearchSources = [
   }
 ];
 
+function buildJobSearchLinks(profile) {
+  const skills = Array.isArray(profile.skills)
+    ? profile.skills
+    : String(profile.skills || "").split(/[,;\n]/).map((skill) => skill.trim()).filter(Boolean);
+  const query = [
+    profile.targetRole || profile.jobTitle,
+    ...skills.slice(0, 4)
+  ].filter(Boolean).join(" ").slice(0, 120);
+
+  return query
+    ? jobSearchSources.map((source) => ({ ...source, url: source.buildUrl(query) }))
+    : [];
+}
+
 const defaultAiProfile = {
   fullName: "",
   email: "",
@@ -73,7 +87,7 @@ const defaultAiProfile = {
   jobTitle: "",
   targetPlatform: "LinkedIn",
   jobDescription: "",
-  jobUrls: "https://www.linkedin.com/jobs\nhttps://www.infojobs.com.br/",
+  jobUrls: "",
   resumeText: "",
   coverLetterText: "",
   jobPreferences: {
@@ -221,16 +235,7 @@ function App() {
   const [applicationStatusFilter, setApplicationStatusFilter] = useState("all");
 
   const jobPreferences = aiProfile?.jobPreferences || defaultAiProfile.jobPreferences || {};
-  const searchSkills = Array.isArray(aiProfile.skills)
-    ? aiProfile.skills
-    : String(aiProfile.skills || "").split(/[,;\n]/).map((skill) => skill.trim()).filter(Boolean);
-  const jobSearchQuery = [
-    aiProfile.targetRole || aiProfile.jobTitle,
-    ...searchSkills.slice(0, 4)
-  ].filter(Boolean).join(" ").slice(0, 120);
-  const jobSearchLinks = jobSearchQuery
-    ? jobSearchSources.map((source) => ({ ...source, url: source.buildUrl(jobSearchQuery) }))
-    : [];
+  const jobSearchLinks = buildJobSearchLinks(aiProfile);
   const authHeaders = useMemo(
     () => token ? { Authorization: `Bearer ${token}` } : {},
     [token]
@@ -581,6 +586,13 @@ function App() {
     const importedValues = Object.fromEntries(Object.entries(profile).filter(([key, value]) =>
       key === "resumeText" || (Array.isArray(value) ? value.length > 0 : Boolean(value))
     ));
+    const importedProfile = {
+      ...aiProfile,
+      ...importedValues,
+      jobTitle: aiProfile.jobTitle || profile.targetRole || ""
+    };
+    const searchLinks = buildJobSearchLinks(importedProfile);
+
     setUploadedResumes((current) => [...documents, ...current].slice(0, 10));
     setResumeFileName(documents.map((document) => document.name).join(", "));
     setAiProfile((current) => ({
@@ -592,7 +604,19 @@ function App() {
     setPendingProfileImport(null);
     setAiResult(null);
     setError("");
-    setSuccess("Currículo importado. Para adaptá-lo, escolha uma vaga e informe sua descrição.");
+    searchLinks.forEach(({ url }) => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+    setSuccess(searchLinks.length
+      ? "Currículo importado. Abri as buscas nos portais em novas abas. Entre diretamente nos sites; se algum redirecionar após o login, volte e clique em Buscar novamente."
+      : "Currículo importado. Informe o cargo e as competências para abrir buscas nos portais.");
+  };
+
+  const reopenJobSearches = () => {
+    jobSearchLinks.forEach(({ url }) => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+    setSuccess("Reabri as buscas nos portais. Se alguma aba não abrir, use os links individuais abaixo.");
   };
 
   const handlePreferenceToggle = (key) => {
@@ -790,10 +814,18 @@ function App() {
     setError("");
 
     try {
-      const urls = aiProfile.jobUrls
+      const manualUrls = aiProfile.jobUrls
         .split(/\n|,/)
         .map((value) => value.trim())
         .filter(Boolean);
+      const urls = manualUrls.length
+        ? manualUrls
+        : jobSearchLinks.slice(0, 6).map((source) => source.url);
+
+      if (!urls.length) {
+        setError("Importe o currículo ou informe o cargo e as competências para preparar as buscas.");
+        return;
+      }
 
       const preferences = {
         ...defaultAiProfile.jobPreferences,
@@ -1259,13 +1291,22 @@ function App() {
                     Buscar no {source.name}
                   </a>
                 ))}
+                {uploadedResumes.length > 0 && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={reopenJobSearches}
+                  >
+                    Abrir buscas novamente
+                  </button>
+                )}
               </div>
             ) : (
               <p className="automation-note">Importe seu currículo ou informe o cargo e as competências para montar a busca.</p>
             )}
             <small className="automation-note">
-              O assistente não acessa suas contas, não guarda senhas e não envia candidaturas.
-              Depois de escolher uma vaga, cole a descrição no cadastro do currículo.
+              As vagas aparecem nas páginas dos portais, não dentro deste painel. Entre diretamente nos sites; o login fica no seu navegador.
+              Depois, escolha uma vaga e cole a descrição no cadastro do currículo. O assistente não guarda senhas nem envia candidaturas.
             </small>
           </div>
 
@@ -1420,10 +1461,10 @@ function App() {
 
           {import.meta.env.DEV && (
             <div className="ai-field">
-              <label>URLs de busca ou vagas (até 6 por sessão)</label>
+              <label>URLs personalizadas de busca ou vagas (opcional, até 6)</label>
               <textarea name="jobUrls" value={aiProfile.jobUrls} onChange={handleAiInput} />
               <small className="automation-note">
-                Abre um navegador local separado e mantém sua sessão ativa por até 2 horas. Você faz login, revisa e envia as candidaturas manualmente.
+                Se deixar vazio, serão abertas as buscas com o cargo e as competências do currículo. Faça login diretamente no navegador local.
               </small>
             </div>
           )}
@@ -1434,7 +1475,7 @@ function App() {
             </button>
             {import.meta.env.DEV ? (
               <button type="button" className="secondary-button" onClick={handleRunAutomation} disabled={automationLoading}>
-                {automationLoading ? "Preparando..." : "Preparar navegador local"}
+                {automationLoading ? "Abrindo buscas..." : "Abrir buscas no navegador local"}
               </button>
             ) : (
               <small className="automation-note">
@@ -1715,8 +1756,11 @@ function App() {
                 <div className="automation-session-bar">
                   <span>Sessão local: {automationResult.status === "already_running" ? "já aberta" : "ativa"}</span>
                   <button type="button" className="danger-button" onClick={handleStopAutomation}>
-                    Encerrar navegador
+                    Fechar navegador
                   </button>
+                  <small>
+                    Fechar não desconecta sua conta. Para sair, use o logout do portal; ele também pode expirar a sessão.
+                  </small>
                 </div>
               )}
 

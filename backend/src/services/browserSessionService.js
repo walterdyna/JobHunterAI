@@ -11,6 +11,7 @@ const allowedDomains = [
   "indeed.com",
   "indeed.com.br",
   "infojobs.com.br",
+  "gupy.io",
   "glassdoor.com",
   "glassdoor.com.br",
   "remotive.com",
@@ -22,7 +23,6 @@ const allowedDomains = [
   "catho.com.br"
 ];
 const maxTargetsPerSession = 6;
-const sessionTimeoutMs = 2 * 60 * 60 * 1000;
 
 function inputError(message) {
   const error = new Error(message);
@@ -134,13 +134,6 @@ function normalizeAndValidateUrls(rawUrls) {
   });
 }
 
-function clearSessionTimer(session) {
-  if (session.timeout) {
-    clearTimeout(session.timeout);
-    session.timeout = null;
-  }
-}
-
 async function stopSession(userId) {
   const session = sessions.get(String(userId));
   if (!session) {
@@ -148,7 +141,6 @@ async function stopSession(userId) {
   }
 
   sessions.delete(String(userId));
-  clearSessionTimer(session);
   await session.context.close();
   return { status: "stopped", sessionId: session.sessionId };
 }
@@ -180,12 +172,10 @@ async function startSession(userId, rawUrls) {
   const session = {
     sessionId: `${Date.now()}-${Number(userId)}`,
     context,
-    results: [],
-    timeout: null
+    results: []
   };
   sessions.set(key, session);
   context.on("close", () => {
-    clearSessionTimer(session);
     if (sessions.get(key) === session) {
       sessions.delete(key);
     }
@@ -216,13 +206,6 @@ async function startSession(userId, rawUrls) {
     await stopSession(userId);
     throw new Error(`Não foi possível abrir as páginas: ${error.message}`);
   }
-
-  session.timeout = setTimeout(() => {
-    stopSession(userId).catch((error) => {
-      console.error("Falha ao encerrar sessão de automação expirada:", error);
-    });
-  }, sessionTimeoutMs);
-  session.timeout.unref();
 
   return {
     status: "browser_opened",

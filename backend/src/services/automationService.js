@@ -204,7 +204,7 @@ async function runAutomation(profile = {}, urls = [], preferences = {}, userId) 
     mode: "supervised_browser",
     message: browserResult.status === "already_running"
       ? "Sua sessão supervisionada já está aberta. Continue no navegador e faça login/preencha os formulários manualmente."
-      : "As páginas foram abertas em um perfil de navegador local separado para sua conta. Faça login e revise cada candidatura; o envio permanece manual."
+      : "As páginas foram abertas em um perfil persistente neste computador. Faça login diretamente nos portais; use o logout do próprio site para sair. A assistente não coleta vagas nem envia candidaturas."
   };
 }
 

@@ -358,6 +358,11 @@
   font-weight: 700;
 }
 
+.automation-session-bar small {
+  flex-basis: 100%;
+  font-weight: 400;
+}
+
 .opened-pages-list {
   display: grid;
   gap: 8px;

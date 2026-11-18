@@ -18,7 +18,7 @@ npm install
 npm run dev
 ```
 
-Configure `backend/.env` com `JWT_SECRET` aleatório de pelo menos 32 caracteres antes de iniciar. Há um modelo em [`backend/.env.example`](./backend/.env.example); nunca publique o arquivo `.env`.
+Configure `backend/.env` com `JWT_SECRET` aleatório de pelo menos 32 caracteres antes de iniciar. Para usar a automação local, configure também `NODE_ENV=development`, `HOST=127.0.0.1`, `DB_CLIENT=sqlite` e `AUTOMATION_ENABLED=true`. Há um modelo em [`backend/.env.example`](./backend/.env.example); ajuste esses valores para o ambiente local e nunca publique o arquivo `.env`.
 
 ### Testes automatizados do backend
 ```bash
@@ -42,9 +42,9 @@ cd backend
 npx playwright install chromium
 ```
 
-No painel, informe até seis URLs HTTPS de plataformas suportadas e clique em **Preparar automação**. O JobHunter abre essas páginas em uma janela local separada, com perfil de navegador isolado por conta. Faça login, confira os dados e envie cada candidatura manualmente. A sessão fecha pelo botão **Encerrar navegador** ou automaticamente após duas horas.
+No painel local, importe o currículo e clique em **Abrir buscas e entrar nos portais**. As buscas usam o cargo e até quatro competências do currículo. Se necessário, informe até seis URLs HTTPS personalizadas. O JobHunter abre as páginas em um perfil de navegador persistente no computador; faça login diretamente nos portais e encerre a janela apenas quando quiser. A sessão não é encerrada por tempo limite. Use **Fechar navegador** para fechar o navegador; isso não faz logout nos portais. Para sair da conta, use a opção de logout do próprio portal.
 
-Por segurança, a automação só abre domínios conhecidos de emprego. Ela não preenche ou envia formulários, não contorna CAPTCHA, autenticação nem controles anti-bot. Os cookies de sessão ficam no perfil local do Playwright, separados por usuário, e não são enviados para a API.
+Por segurança, a automação só abre domínios conhecidos de emprego. Ela não coleta anúncios automaticamente, não preenche ou envia formulários e não contorna CAPTCHA, autenticação nem controles anti-bot. Os cookies de sessão ficam no perfil local do Playwright, separados por usuário, e não são enviados para a API. Os próprios portais podem expirar a sessão e exigir novo login.
 
 ### 4) IA local opcional (Ollama)
 ```bash
@@ -75,7 +75,7 @@ A automação de plataformas externas depende dos termos de uso das próprias em
 
 A extração do currículo mostra um rascunho para revisão; só após confirmar os dados são mesclados ao perfil. Aderência é uma comparação textual heurística, não uma probabilidade de contratação. Requisitos obrigatórios recebem maior peso que diferenciais; termos encontrados incluem a origem da evidência, e lacunas e níveis de idioma são mostrados separadamente. O conteúdo importado é preservado como fonte e não são criados cargos, métricas ou competências para preencher lacunas. Ao registrar uma candidatura com documentos gerados para a mesma vaga, as versões utilizadas ficam armazenadas no histórico da conta. Revise e confirme os dados antes de qualquer envio.
 
-O painel de busca abre resultados nos portais suportados; ele não rastreia todos os sites nem acessa contas externas. Faça login diretamente no portal, escolha a vaga e cole a descrição no cadastro do currículo. A versão ajustada é um rascunho para revisão: o app não guarda senhas nem envia currículos ou candidaturas automaticamente. Em produção no Render, o navegador interativo permanece desativado.
+Ao importar o currículo usando **Só importar currículo**, o painel abre buscas pré-preenchidas nos portais em novas abas. Se o navegador bloquear alguma aba, use os links individuais; após o login, reabra a busca se o portal não voltar aos resultados automaticamente. As vagas aparecem nos próprios portais, não dentro do painel; o app não coleta anúncios automaticamente. Escolha uma vaga e cole a descrição para gerar um rascunho revisável. O app não guarda senhas nem envia currículos ou candidaturas. Em produção no Render, o navegador interativo permanece desativado; os portais abrem no navegador do usuário, e a cópia local usa banco e perfil de navegador separados da conta hospedada.
 
 ## Estrutura modular
 - Cada função foi separada em arquivo específico.

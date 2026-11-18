@@ -254,6 +254,7 @@ test("tailored resume prioritizes confirmed skills from the vacancy without addi
 
 test("browser URL validation allows approved HTTPS portals and blocks unsafe targets", () => {
   assert.equal(normalizeAndValidateUrls(["https://www.linkedin.com/jobs/"])[0], "https://www.linkedin.com/jobs/");
+  assert.equal(normalizeAndValidateUrls(["https://portal.gupy.io/job-search/term?term=Analista"])[0], "https://portal.gupy.io/job-search/term?term=Analista");
   assert.throws(() => normalizeAndValidateUrls(["http://linkedin.com"]), /somente URLs HTTPS/);
   assert.throws(() => normalizeAndValidateUrls(["https://localhost"]), /Domínio não autorizado/);
   assert.throws(() => normalizeAndValidateUrls(["https://example.com"]), /Domínio não autorizado/);
