@@ -1430,9 +1430,15 @@ function App() {
             <button type="button" className="primary-button" onClick={handleGenerateProfile} disabled={aiLoading}>
               {aiLoading ? "Gerando..." : "Gerar currículo + carta"}
             </button>
-            <button type="button" className="secondary-button" onClick={handleRunAutomation} disabled={automationLoading}>
-              {automationLoading ? "Preparando..." : "Preparar automação"}
-            </button>
+            {import.meta.env.DEV ? (
+              <button type="button" className="secondary-button" onClick={handleRunAutomation} disabled={automationLoading}>
+                {automationLoading ? "Preparando..." : "Preparar navegador local"}
+              </button>
+            ) : (
+              <small className="automation-note">
+                O site publicado não abre um navegador para login. Use os links de busca e faça login diretamente no portal.
+              </small>
+            )}
           </div>
 
           {platformModules.length > 0 && (
