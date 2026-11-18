@@ -150,7 +150,7 @@ if (isPostgres) {
     ssl: { ca: sslCa, rejectUnauthorized: true },
     max: 5,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000
+    connectionTimeoutMillis: 30000
   });
   db = pool;
 } else {
