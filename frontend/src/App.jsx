@@ -1418,13 +1418,15 @@ function App() {
             ))}
           </div>
 
-          <div className="ai-field">
-            <label>URLs de busca ou vagas (até 6 por sessão)</label>
-            <textarea name="jobUrls" value={aiProfile.jobUrls} onChange={handleAiInput} />
-            <small className="automation-note">
-              Abre um navegador local separado e mantém sua sessão ativa por até 2 horas. Você faz login, revisa e envia as candidaturas manualmente.
-            </small>
-          </div>
+          {import.meta.env.DEV && (
+            <div className="ai-field">
+              <label>URLs de busca ou vagas (até 6 por sessão)</label>
+              <textarea name="jobUrls" value={aiProfile.jobUrls} onChange={handleAiInput} />
+              <small className="automation-note">
+                Abre um navegador local separado e mantém sua sessão ativa por até 2 horas. Você faz login, revisa e envia as candidaturas manualmente.
+              </small>
+            </div>
+          )}
 
           <div className="ai-actions">
             <button type="button" className="primary-button" onClick={handleGenerateProfile} disabled={aiLoading}>
