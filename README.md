@@ -62,6 +62,8 @@ export OLLAMA_MODEL=llama3.1
 - Cadastro e login do usuário
 - Gestão de empresas e vagas
 - Importação revisável de até 10 arquivos por lote (PDF pesquisável, TXT, Markdown, CSV ou JSON; até 20 MB combinados por lote)
+- Links de busca em LinkedIn, Indeed, InfoJobs, Gupy e Catho, com termos derivados do cargo e das competências do perfil
+- Geração de uma versão de currículo por vaga a partir da descrição fornecida; o currículo original é preservado para conferência
 - Geração de currículo adaptado para a vaga, com evidências de correspondência e lacunas
 - Geração de carta de apresentação personalizada
 - Estratégia de candidatura com plano de ação
@@ -72,6 +74,8 @@ export OLLAMA_MODEL=llama3.1
 A automação de plataformas externas depende dos termos de uso das próprias empresas e pode exigir login do usuário e validações de segurança. O projeto foi construído para operar de forma local, transparente e controlada, usando o navegador do usuário e sem burlar regras de acesso.
 
 A extração do currículo mostra um rascunho para revisão; só após confirmar os dados são mesclados ao perfil. Aderência é uma comparação textual heurística, não uma probabilidade de contratação. Requisitos obrigatórios recebem maior peso que diferenciais; termos encontrados incluem a origem da evidência, e lacunas e níveis de idioma são mostrados separadamente. O conteúdo importado é preservado como fonte e não são criados cargos, métricas ou competências para preencher lacunas. Ao registrar uma candidatura com documentos gerados para a mesma vaga, as versões utilizadas ficam armazenadas no histórico da conta. Revise e confirme os dados antes de qualquer envio.
+
+O painel de busca abre resultados nos portais suportados; ele não rastreia todos os sites nem acessa contas externas. Faça login diretamente no portal, escolha a vaga e cole a descrição no cadastro do currículo. A versão ajustada é um rascunho para revisão: o app não guarda senhas nem envia currículos ou candidaturas automaticamente. Em produção no Render, o navegador interativo permanece desativado.
 
 ## Estrutura modular
 - Cada função foi separada em arquivo específico.

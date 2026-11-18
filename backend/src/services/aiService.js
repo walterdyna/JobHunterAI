@@ -191,6 +191,15 @@ function buildFallbackResponse(profile, jobDescription) {
     .filter((skill, index, skills) => skills.indexOf(skill) === index);
   const candidateExperience = normalizeText(profile.experience);
   const originalResume = normalizeText(profile.resumeText);
+  const vacancyTerms = new Set(tokenizeForMatching(`${jobTitle} ${jobDescription}`));
+  const prioritizedSkills = candidateSkills
+    .map((skill, index) => ({
+      skill,
+      index,
+      relevance: tokenizeForMatching(skill).filter((term) => vacancyTerms.has(term)).length
+    }))
+    .sort((left, right) => right.relevance - left.relevance || left.index - right.index)
+    .map(({ skill }) => skill);
   const candidateEvidence = [
     originalResume,
     profile.targetRole,
@@ -222,7 +231,7 @@ function buildFallbackResponse(profile, jobDescription) {
     ...(summary ? ["", "Resumo profissional", summary] : []),
     ...(jobTitle ? ["", `Objetivo profissional: ${jobTitle}`] : []),
     ...(candidateExperience ? ["", "Experiência profissional", candidateExperience] : []),
-    ...(candidateSkills.length ? ["", "Competências informadas", candidateSkills.join(", ")] : []),
+    ...(prioritizedSkills.length ? ["", "Competências confirmadas (mais alinhadas primeiro)", prioritizedSkills.join(", ")] : []),
     ...(originalResume ? ["", "Conteúdo original do currículo", originalResume] : [])
   ];
   const resume = resumeSections.join("\n");

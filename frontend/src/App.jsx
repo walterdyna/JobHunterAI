@@ -38,6 +38,29 @@ const globalPlatforms = [
   "Catho"
 ];
 
+const jobSearchSources = [
+  {
+    name: "LinkedIn",
+    buildUrl: (query) => `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(query)}`
+  },
+  {
+    name: "Indeed",
+    buildUrl: (query) => `https://br.indeed.com/jobs?q=${encodeURIComponent(query)}`
+  },
+  {
+    name: "InfoJobs",
+    buildUrl: (query) => `https://www.infojobs.com.br/vagas-de-emprego.aspx?kw=${encodeURIComponent(query)}`
+  },
+  {
+    name: "Gupy",
+    buildUrl: (query) => `https://portal.gupy.io/job-search/term?term=${encodeURIComponent(query)}`
+  },
+  {
+    name: "Catho",
+    buildUrl: (query) => `https://www.catho.com.br/vagas/?q=${encodeURIComponent(query)}`
+  }
+];
+
 const defaultAiProfile = {
   fullName: "",
   email: "",
@@ -198,6 +221,16 @@ function App() {
   const [applicationStatusFilter, setApplicationStatusFilter] = useState("all");
 
   const jobPreferences = aiProfile?.jobPreferences || defaultAiProfile.jobPreferences || {};
+  const searchSkills = Array.isArray(aiProfile.skills)
+    ? aiProfile.skills
+    : String(aiProfile.skills || "").split(/[,;\n]/).map((skill) => skill.trim()).filter(Boolean);
+  const jobSearchQuery = [
+    aiProfile.targetRole || aiProfile.jobTitle,
+    ...searchSkills.slice(0, 4)
+  ].filter(Boolean).join(" ").slice(0, 120);
+  const jobSearchLinks = jobSearchQuery
+    ? jobSearchSources.map((source) => ({ ...source, url: source.buildUrl(jobSearchQuery) }))
+    : [];
   const authHeaders = useMemo(
     () => token ? { Authorization: `Bearer ${token}` } : {},
     [token]
@@ -432,12 +465,17 @@ function App() {
       if (combinedText.length > 500000) {
         throw new Error("O texto extraído excede o limite de 500 mil caracteres por lote.");
       }
+      const importedProfile = kind === "resume"
+        ? { ...parseImportedProfile(combinedText), resumeText: combinedText }
+        : { coverLetterText: combinedText };
       setPendingProfileImport({
         kind,
         documents: importedDocuments,
-        profile: kind === "resume"
-          ? { ...parseImportedProfile(combinedText), resumeText: combinedText }
-          : { coverLetterText: combinedText }
+        vacancyId: "",
+        jobTitle: aiProfile.jobTitle || importedProfile.targetRole || "",
+        companyName: aiProfile.companyName || "",
+        jobDescription: aiProfile.jobDescription || "",
+        profile: importedProfile
       });
       setSuccess("Revise os dados extraídos antes de aplicá-los ao perfil.");
     } catch (importError) {
@@ -461,32 +499,100 @@ function App() {
     } : current);
   };
 
-  const confirmProfileImport = () => {
+  const handlePendingTargetChange = (event) => {
+    const { name, value } = event.target;
+    setPendingProfileImport((current) => current ? { ...current, [name]: value } : current);
+    setError("");
+  };
+
+  const handlePendingVacancyChange = (event) => {
+    const vacancyId = event.target.value;
+    const vacancy = vacancies.find((item) => String(item.id) === vacancyId);
+    setPendingProfileImport((current) => current ? {
+      ...current,
+      vacancyId,
+      ...(vacancy ? { jobTitle: vacancy.title, companyName: vacancy.company } : {})
+    } : current);
+    setError("");
+  };
+
+  const confirmProfileImport = async () => {
     if (!pendingProfileImport) return;
 
     const { kind, documents, profile } = pendingProfileImport;
-    setUploadedResumes((current) => [...documents, ...current].slice(0, 10));
 
     if (kind === "resume") {
-      setResumeFileName(documents.map((document) => document.name).join(", "));
-      setAiProfile((current) => ({
-        ...current,
-        ...Object.fromEntries(Object.entries(profile).filter(([key, value]) =>
-          key === "resumeText" || (Array.isArray(value) ? value.length > 0 : Boolean(value))
-        )),
-        jobTitle: current.jobTitle || profile.targetRole || "",
-        jobPreferences: current.jobPreferences || defaultAiProfile.jobPreferences
-      }));
-    } else {
-      setCoverLetterFileName(documents.map((document) => document.name).join(", "));
-      setAiProfile((current) => ({ ...current, coverLetterText: profile.coverLetterText }));
+      const selectedVacancy = vacancies.find((vacancy) => String(vacancy.id) === pendingProfileImport.vacancyId);
+      const jobTitle = (selectedVacancy?.title || pendingProfileImport.jobTitle || "").trim();
+      const jobDescription = pendingProfileImport.jobDescription.trim();
+
+      if (!jobTitle) {
+        setError("Informe o cargo da vaga ou escolha uma vaga cadastrada antes de ajustar o currículo.");
+        return;
+      }
+      if (!jobDescription) {
+        setError("Cole a descrição da vaga para que o currículo seja ajustado com base nos requisitos reais.");
+        return;
+      }
+
+      const importedValues = Object.fromEntries(Object.entries(profile).filter(([key, value]) =>
+        key === "resumeText" || (Array.isArray(value) ? value.length > 0 : Boolean(value))
+      ));
+      const tailoredProfile = {
+        ...aiProfile,
+        ...importedValues,
+        jobTitle,
+        companyName: selectedVacancy?.company || pendingProfileImport.companyName.trim(),
+        jobDescription,
+        jobPreferences: aiProfile.jobPreferences || defaultAiProfile.jobPreferences
+      };
+
+      setAiLoading(true);
+      setError("");
+      setSuccess("");
+      try {
+        const generated = await generateCareerAssets(tailoredProfile, { headers: authHeaders });
+        setUploadedResumes((current) => [...documents, ...current].slice(0, 10));
+        setResumeFileName(documents.map((document) => document.name).join(", "));
+        setAiProfile(tailoredProfile);
+        setAiResult(generated);
+        setPendingProfileImport(null);
+        setSuccess(`Currículo preparado para ${jobTitle}. O original foi preservado; revise a nova versão antes de usar.`);
+      } catch (errorResponse) {
+        setError(errorResponse.response?.data?.message || "Não foi possível ajustar o currículo para esta vaga.");
+      } finally {
+        setAiLoading(false);
+      }
+      return;
     }
 
+    setUploadedResumes((current) => [...documents, ...current].slice(0, 10));
+    setCoverLetterFileName(documents.map((document) => document.name).join(", "));
+    setAiProfile((current) => ({ ...current, coverLetterText: profile.coverLetterText }));
     setPendingProfileImport(null);
     setAiResult(null);
-    setSuccess(kind === "resume"
-      ? "Currículo revisado e aplicado ao perfil."
-      : "Carta importada e aplicada ao perfil.");
+    setSuccess("Carta importada e aplicada ao perfil.");
+  };
+
+  const importProfileOnly = () => {
+    if (!pendingProfileImport || pendingProfileImport.kind !== "resume") return;
+
+    const { documents, profile } = pendingProfileImport;
+    const importedValues = Object.fromEntries(Object.entries(profile).filter(([key, value]) =>
+      key === "resumeText" || (Array.isArray(value) ? value.length > 0 : Boolean(value))
+    ));
+    setUploadedResumes((current) => [...documents, ...current].slice(0, 10));
+    setResumeFileName(documents.map((document) => document.name).join(", "));
+    setAiProfile((current) => ({
+      ...current,
+      ...importedValues,
+      jobTitle: current.jobTitle || profile.targetRole || "",
+      jobPreferences: current.jobPreferences || defaultAiProfile.jobPreferences
+    }));
+    setPendingProfileImport(null);
+    setAiResult(null);
+    setError("");
+    setSuccess("Currículo importado. Para adaptá-lo, escolha uma vaga e informe sua descrição.");
   };
 
   const handlePreferenceToggle = (key) => {
@@ -1128,8 +1234,39 @@ function App() {
 
         <section className="panel ai-panel">
           <div className="panel-header">
-            <h2>IA para candidatura</h2>
-            <span className="mini-count">gratis e local</span>
+            <h2>Assistente de vagas e currículo</h2>
+            <span className="mini-count">com sua revisão</span>
+          </div>
+
+          <div className="job-search-panel">
+            <div>
+              <h3>Buscar vagas compatíveis</h3>
+              <p>
+                A busca usa somente o cargo e as competências do perfil. Os sites abrem em outra aba;
+                você faz login diretamente neles e decide se quer se candidatar.
+              </p>
+            </div>
+            {jobSearchLinks.length > 0 ? (
+              <div className="job-search-links">
+                {jobSearchLinks.map((source) => (
+                  <a
+                    key={source.name}
+                    className="secondary-button"
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Buscar no {source.name}
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="automation-note">Importe seu currículo ou informe o cargo e as competências para montar a busca.</p>
+            )}
+            <small className="automation-note">
+              O assistente não acessa suas contas, não guarda senhas e não envia candidaturas.
+              Depois de escolher uma vaga, cole a descrição no cadastro do currículo.
+            </small>
           </div>
 
           <div className="import-grid">
@@ -1326,35 +1463,71 @@ function App() {
                 </ul>
               </div>
               {pendingProfileImport.kind === "resume" ? (
-                <div className="ai-grid">
-                  {[
-                    ["fullName", "Nome completo"],
-                    ["email", "E-mail"],
-                    ["phone", "Telefone"],
-                    ["targetRole", "Cargo alvo"]
-                  ].map(([name, label]) => (
-                    <div className="ai-field" key={name}>
-                      <label>{label}</label>
-                      <input name={name} value={pendingProfileImport.profile[name] || ""} onChange={handleImportedProfileChange} />
+                <>
+                  {vacancies.length > 0 && (
+                    <div className="ai-field">
+                      <label htmlFor="resume-target-vacancy">Vaga cadastrada</label>
+                      <select id="resume-target-vacancy" value={pendingProfileImport.vacancyId} onChange={handlePendingVacancyChange}>
+                        <option value="">Informar a vaga manualmente</option>
+                        {vacancies.map((vacancy) => (
+                          <option key={vacancy.id} value={String(vacancy.id)}>
+                            {vacancy.title} — {vacancy.company}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  ))}
-                  <div className="ai-field">
-                    <label>Competências extraídas (separadas por vírgula)</label>
-                    <input name="skills" value={(pendingProfileImport.profile.skills || []).join(", ")} onChange={handleImportedProfileChange} />
+                  )}
+                  <div className="ai-grid">
+                    <div className="ai-field">
+                      <label htmlFor="resume-job-title">Cargo da vaga</label>
+                      <input id="resume-job-title" name="jobTitle" value={pendingProfileImport.jobTitle} onChange={handlePendingTargetChange} />
+                    </div>
+                    <div className="ai-field">
+                      <label htmlFor="resume-company-name">Empresa da vaga</label>
+                      <input id="resume-company-name" name="companyName" value={pendingProfileImport.companyName} onChange={handlePendingTargetChange} />
+                    </div>
+                    {[
+                      ["fullName", "Nome completo"],
+                      ["email", "E-mail"],
+                      ["phone", "Telefone"],
+                      ["targetRole", "Cargo alvo no currículo"]
+                    ].map(([name, label]) => (
+                      <div className="ai-field" key={name}>
+                        <label>{label}</label>
+                        <input name={name} value={pendingProfileImport.profile[name] || ""} onChange={handleImportedProfileChange} />
+                      </div>
+                    ))}
+                    <div className="ai-field">
+                      <label>Competências extraídas (separadas por vírgula)</label>
+                      <input name="skills" value={(pendingProfileImport.profile.skills || []).join(", ")} onChange={handleImportedProfileChange} />
+                    </div>
+                    <div className="ai-field">
+                      <label>Idiomas extraídos (separados por vírgula)</label>
+                      <input name="languages" value={(pendingProfileImport.profile.languages || []).join(", ")} onChange={handleImportedProfileChange} />
+                    </div>
+                    <div className="ai-field">
+                      <label>Resumo extraído</label>
+                      <textarea name="summary" value={pendingProfileImport.profile.summary || ""} onChange={handleImportedProfileChange} />
+                    </div>
+                    <div className="ai-field">
+                      <label>Experiência extraída</label>
+                      <textarea name="experience" value={pendingProfileImport.profile.experience || ""} onChange={handleImportedProfileChange} />
+                    </div>
                   </div>
                   <div className="ai-field">
-                    <label>Idiomas extraídos (separados por vírgula)</label>
-                    <input name="languages" value={(pendingProfileImport.profile.languages || []).join(", ")} onChange={handleImportedProfileChange} />
+                    <label htmlFor="resume-job-description">Descrição completa da vaga</label>
+                    <textarea
+                      id="resume-job-description"
+                      name="jobDescription"
+                      value={pendingProfileImport.jobDescription}
+                      onChange={handlePendingTargetChange}
+                      placeholder="Cole aqui os requisitos e as responsabilidades do anúncio escolhido."
+                    />
+                    <small className="automation-note">
+                      O currículo original será mantido como referência. Confira cada alteração antes de usar a nova versão.
+                    </small>
                   </div>
-                  <div className="ai-field">
-                    <label>Resumo extraído</label>
-                    <textarea name="summary" value={pendingProfileImport.profile.summary || ""} onChange={handleImportedProfileChange} />
-                  </div>
-                  <div className="ai-field">
-                    <label>Experiência extraída</label>
-                    <textarea name="experience" value={pendingProfileImport.profile.experience || ""} onChange={handleImportedProfileChange} />
-                  </div>
-                </div>
+                </>
               ) : (
                 <div className="ai-field">
                   <label>Texto da carta importada</label>
@@ -1362,8 +1535,17 @@ function App() {
                 </div>
               )}
               <div className="ai-actions">
-                <button type="button" className="primary-button" onClick={confirmProfileImport}>Confirmar importação</button>
-                <button type="button" className="secondary-button" onClick={() => setPendingProfileImport(null)}>Descartar</button>
+                <button type="button" className="primary-button" onClick={confirmProfileImport} disabled={aiLoading}>
+                  {pendingProfileImport.kind === "resume"
+                    ? aiLoading ? "Ajustando currículo..." : "Cadastrar currículo e ajustar"
+                    : "Confirmar importação"}
+                </button>
+                {pendingProfileImport.kind === "resume" && (
+                  <button type="button" className="secondary-button" onClick={importProfileOnly} disabled={aiLoading}>
+                    Só importar currículo
+                  </button>
+                )}
+                <button type="button" className="secondary-button" onClick={() => setPendingProfileImport(null)} disabled={aiLoading}>Descartar</button>
               </div>
             </section>
           )}

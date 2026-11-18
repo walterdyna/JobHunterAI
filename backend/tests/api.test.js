@@ -241,6 +241,17 @@ test("resume matching uses normalized keywords and preserves confirmed language 
   assert.ok(result.score < 70);
 });
 
+test("tailored resume prioritizes confirmed skills from the vacancy without adding missing requirements", () => {
+  const result = buildFallbackResponse({
+    fullName: "Candidate",
+    jobTitle: "Analista de dados",
+    skills: ["Excel", "Python", "SQL"]
+  }, "Requisitos obrigatórios: SQL e Python. Diferencial: AWS.");
+
+  assert.match(result.resume, /Competências confirmadas \(mais alinhadas primeiro\)\nPython, SQL, Excel/);
+  assert.doesNotMatch(result.resume, /\bAWS\b/i);
+});
+
 test("browser URL validation allows approved HTTPS portals and blocks unsafe targets", () => {
   assert.equal(normalizeAndValidateUrls(["https://www.linkedin.com/jobs/"])[0], "https://www.linkedin.com/jobs/");
   assert.throws(() => normalizeAndValidateUrls(["http://linkedin.com"]), /somente URLs HTTPS/);
