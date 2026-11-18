@@ -1455,12 +1455,17 @@ function App() {
             </div>
           )}
 
-          {(error || success) && (
+          {(error || success) && !pendingProfileImport && (
             <div className={error ? "message error" : "message success"}>{error || success}</div>
           )}
 
           {pendingProfileImport && (
             <section className="import-review ai-output">
+              {(error || success) && (
+                <div className={error ? "message error" : "message success"} role={error ? "alert" : "status"}>
+                  {error || success}
+                </div>
+              )}
               <div>
                 <h3>Revise antes de importar</h3>
                 <p>Confira os campos extraídos. Nada será aplicado ao perfil até você confirmar.</p>
@@ -1532,7 +1537,7 @@ function App() {
                       placeholder="Cole aqui os requisitos e as responsabilidades do anúncio escolhido."
                     />
                     <small className="automation-note">
-                      O currículo original será mantido como referência. Confira cada alteração antes de usar a nova versão.
+                      Para adaptar, informe o cargo e cole a descrição completa da vaga. O currículo original será mantido como referência. Se quiser apenas importar, use “Só importar currículo”.
                     </small>
                   </div>
                 </>
@@ -1543,7 +1548,13 @@ function App() {
                 </div>
               )}
               <div className="ai-actions">
-                <button type="button" className="primary-button" onClick={confirmProfileImport} disabled={aiLoading}>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={confirmProfileImport}
+                  disabled={aiLoading || (pendingProfileImport.kind === "resume"
+                    && (!pendingProfileImport.jobTitle.trim() || !pendingProfileImport.jobDescription.trim()))}
+                >
                   {pendingProfileImport.kind === "resume"
                     ? aiLoading ? "Ajustando currículo..." : "Cadastrar currículo e ajustar"
                     : "Confirmar importação"}
