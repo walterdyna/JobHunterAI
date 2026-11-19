@@ -661,7 +661,7 @@ function App() {
     setSuccess(searchLinks.length
       ? "Currículo importado. A funcionária começou a buscar vagas públicas e abri buscas dos portais em novas abas."
       : "Currículo importado. A funcionária começou a buscar vagas públicas; informe cargo e competências para abrir buscas nos portais.");
-    void handleSearchJobListings(importedProfile);
+    void searchJobsForProfile(importedProfile);
   };
 
   const reopenJobSearches = () => {
@@ -860,7 +860,7 @@ function App() {
     }
   };
 
-  const handleSearchJobListings = async (profile = aiProfile) => {
+  const searchJobsForProfile = async (profile) => {
     setJobSearchLoading(true);
     setJobSearchHasRun(true);
     setJobSearchError("");
@@ -900,6 +900,8 @@ function App() {
       setJobSearchLoading(false);
     }
   };
+
+  const handleSearchJobListings = () => searchJobsForProfile(aiProfile);
 
   const handleJobDecision = async (job, status) => {
     const decisionId = `${job.source}:${job.sourceId}`;
