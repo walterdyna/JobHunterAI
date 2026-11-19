@@ -882,7 +882,18 @@ function App() {
         ? `A funcionária encontrou ${data.jobs.length} vagas nas fontes públicas. Confira a aderência estimada em cada anúncio.`
         : "As fontes estão disponíveis, mas não retornaram vagas novas para exibir.");
     } catch (errorResponse) {
-      const message = errorResponse.response?.data?.message || "Não foi possível buscar vagas agora.";
+      const serverMessage = errorResponse.response?.data?.message;
+      const message = typeof serverMessage === "string" && serverMessage.trim()
+        ? serverMessage
+        : errorResponse.response
+          ? `A API respondeu com HTTP ${errorResponse.response.status}.`
+          : errorResponse.code
+            ? `O navegador não recebeu resposta da API (${errorResponse.code}).`
+            : errorResponse.message || "Não foi possível buscar vagas agora.";
+      console.error("Job search request failed", {
+        status: errorResponse.response?.status,
+        code: errorResponse.code
+      });
       setJobSearchError(message);
       setError(message);
     } finally {
