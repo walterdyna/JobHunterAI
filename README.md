@@ -63,6 +63,8 @@ export OLLAMA_MODEL=llama3.1
 - Gestão de empresas e vagas
 - Importação revisável de até 10 arquivos por lote (PDF pesquisável, TXT, Markdown, CSV ou JSON; até 20 MB combinados por lote)
 - Links de busca em LinkedIn, Indeed, InfoJobs, Gupy e Catho, com termos derivados do cargo e das competências do perfil
+- Busca de vagas remotas em feeds públicos do [Jobicy](https://jobicy.com/) e [Remote OK](https://remoteok.com/), com atribuição e link para cada anúncio; os feeds são armazenados em cache por uma hora
+- Triagem textual estimada com base no currículo, além de arquivos separados de vagas aceitas e recusadas por conta
 - Geração de uma versão de currículo por vaga a partir da descrição fornecida; o currículo original é preservado para conferência
 - Geração de currículo adaptado para a vaga, com evidências de correspondência e lacunas
 - Geração de carta de apresentação personalizada
@@ -75,7 +77,7 @@ A automação de plataformas externas depende dos termos de uso das próprias em
 
 A extração do currículo mostra um rascunho para revisão; só após confirmar os dados são mesclados ao perfil. Aderência é uma comparação textual heurística, não uma probabilidade de contratação. Requisitos obrigatórios recebem maior peso que diferenciais; termos encontrados incluem a origem da evidência, e lacunas e níveis de idioma são mostrados separadamente. O conteúdo importado é preservado como fonte e não são criados cargos, métricas ou competências para preencher lacunas. Ao registrar uma candidatura com documentos gerados para a mesma vaga, as versões utilizadas ficam armazenadas no histórico da conta. Revise e confirme os dados antes de qualquer envio.
 
-Ao importar o currículo usando **Só importar currículo**, o painel abre buscas pré-preenchidas nos portais em novas abas. Se o navegador bloquear alguma aba, use os links individuais; após o login, reabra a busca se o portal não voltar aos resultados automaticamente. As vagas aparecem nos próprios portais, não dentro do painel; o app não coleta anúncios automaticamente. Escolha uma vaga e cole a descrição para gerar um rascunho revisável. O app não guarda senhas nem envia currículos ou candidaturas. Em produção no Render, o navegador interativo permanece desativado; os portais abrem no navegador do usuário, e a cópia local usa banco e perfil de navegador separados da conta hospedada.
+Ao importar o currículo usando **Só importar currículo**, o painel abre buscas pré-preenchidas nos portais em novas abas e também permite buscar vagas no painel usando os feeds públicos do Jobicy e Remote OK. A busca no painel não acessa páginas autenticadas nem lê sessões de navegador; cada resultado identifica sua fonte e leva ao anúncio original. As fontes públicas podem não listar todas as vagas ou fornecer anúncios imediatamente. A aderência é uma comparação textual estimada, não uma garantia de contratação. Ao aceitar uma vaga, o assistente prepara rascunhos do currículo e da carta com base apenas nas informações fornecidas e os arquiva para revisão. A candidatura deve ser concluída manualmente no site da vaga; o app não guarda senhas nem envia candidaturas. Em produção no Render, o navegador interativo permanece desativado; os portais abrem no navegador do usuário, e a cópia local usa banco e perfil de navegador separados da conta hospedada.
 
 ## Estrutura modular
 - Cada função foi separada em arquivo específico.

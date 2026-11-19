@@ -21,3 +21,18 @@ export async function getAutomationStatus(config = {}) {
   const response = await axios.get(`${API_URL}/api/ai/automation/status`, config);
   return response.data;
 }
+
+export async function searchJobListings(payload, config = {}) {
+  const response = await axios.post(`${API_URL}/api/job-discovery/search`, payload, config);
+  return response.data;
+}
+
+export async function getJobDecisions(config = {}) {
+  const response = await axios.get(`${API_URL}/api/job-discovery/decisions`, config);
+  return response.data;
+}
+
+export async function saveJobDecision(payload, config = {}) {
+  const response = await axios.post(`${API_URL}/api/job-discovery/decisions`, payload, config);
+  return response.data;
+}

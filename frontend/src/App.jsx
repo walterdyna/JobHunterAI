@@ -2,7 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./App.css";
 import "./styles/ai-assistant.css";
-import { generateCareerAssets, getAutomationStatus, runAutomation, stopAutomation } from "./services/jobhunterApi";
+import {
+  generateCareerAssets,
+  getAutomationStatus,
+  getJobDecisions,
+  runAutomation,
+  saveJobDecision,
+  searchJobListings,
+  stopAutomation
+} from "./services/jobhunterApi";
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -30,6 +38,7 @@ const globalPlatforms = [
   "Glassdoor",
   "GitHub Jobs",
   "Remotive",
+  "Jobicy",
   "We Work Remotely",
   "Remote OK",
   "Workable",
@@ -229,6 +238,13 @@ function App() {
   const [uploadedResumes, setUploadedResumes] = useState([]);
   const [pendingProfileImport, setPendingProfileImport] = useState(null);
   const [applications, setApplications] = useState([]);
+  const [discoveredJobs, setDiscoveredJobs] = useState([]);
+  const [jobDecisions, setJobDecisions] = useState([]);
+  const [jobBoardView, setJobBoardView] = useState("new");
+  const [jobSearchLoading, setJobSearchLoading] = useState(false);
+  const [jobDecisionLoading, setJobDecisionLoading] = useState("");
+  const [jobSearchWarnings, setJobSearchWarnings] = useState([]);
+  const [jobFeedSources, setJobFeedSources] = useState([]);
   const [resumeFileName, setResumeFileName] = useState("Nenhum currículo selecionado");
   const [coverLetterFileName, setCoverLetterFileName] = useState("Nenhuma carta selecionada");
   const [applicationSearch, setApplicationSearch] = useState("");
@@ -338,6 +354,10 @@ function App() {
     setCompanies([]);
     setVacancies([]);
     setApplications([]);
+    setDiscoveredJobs([]);
+    setJobDecisions([]);
+    setJobSearchWarnings([]);
+    setJobFeedSources([]);
     setError("");
     setSuccess("");
     localStorage.removeItem("jobhunter_token");
@@ -399,6 +419,25 @@ function App() {
       window.clearTimeout(timer);
     };
   }, [fetchDashboardData, token]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    let isCurrent = true;
+    getJobDecisions({ headers: authHeaders })
+      .then((data) => {
+        if (isCurrent) setJobDecisions(data || []);
+      })
+      .catch((errorResponse) => {
+        if (isCurrent) {
+          setError(errorResponse.response?.data?.message || "Não foi possível carregar as vagas arquivadas.");
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [authHeaders, token]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -805,6 +844,93 @@ function App() {
       setError(errorResponse.response?.data?.message || "Não foi possível gerar o conteúdo com a IA local.");
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const handleSearchJobListings = async () => {
+    setJobSearchLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const data = await searchJobListings({
+        profile: {
+          ...aiProfile,
+          resumeText: String(aiProfile.resumeText || "").slice(0, 120000)
+        }
+      }, { headers: authHeaders });
+      setDiscoveredJobs(data.jobs || []);
+      setJobSearchWarnings(data.warnings || []);
+      setJobFeedSources(data.sources || []);
+      setJobBoardView("new");
+      setSuccess(data.jobs?.length
+        ? `${data.jobs.length} vagas compatíveis encontradas. A aderência é estimada e deve ser revisada.`
+        : "Nenhuma vaga compatível foi encontrada nas fontes disponíveis. Ajuste o perfil e tente novamente.");
+    } catch (errorResponse) {
+      setError(errorResponse.response?.data?.message || "Não foi possível buscar vagas agora.");
+    } finally {
+      setJobSearchLoading(false);
+    }
+  };
+
+  const handleJobDecision = async (job, status) => {
+    const decisionId = `${job.source}:${job.sourceId}`;
+    setJobDecisionLoading(decisionId);
+    setError("");
+    setSuccess("");
+
+    try {
+      let generatedAssets = null;
+      if (status === "accepted") {
+        generatedAssets = await generateCareerAssets({
+          ...aiProfile,
+          targetRole: aiProfile.targetRole || job.title,
+          jobTitle: job.title,
+          companyName: job.company,
+          targetPlatform: job.source,
+          jobDescription: job.description,
+          jobUrls: job.jobUrl
+        }, { headers: authHeaders });
+        if (!generatedAssets.resume) {
+          throw new Error("Não foi possível preparar um rascunho de currículo para esta vaga.");
+        }
+      }
+
+      const decision = await saveJobDecision({
+        ...job,
+        status,
+        fitScore: generatedAssets && Number.isInteger(generatedAssets.score)
+          ? generatedAssets.score
+          : job.fitScore,
+        matchedTerms: job.matchedTerms || [],
+        resumeSnapshot: generatedAssets?.resume || "",
+        coverLetterSnapshot: generatedAssets?.coverLetter || ""
+      }, { headers: authHeaders });
+
+      setJobDecisions((current) => [
+        decision,
+        ...current.filter((item) => !(item.source === job.source && item.source_id === job.sourceId))
+      ]);
+      setDiscoveredJobs((current) => current.filter((item) => decisionId !== `${item.source}:${item.sourceId}`));
+      if (generatedAssets) {
+        setAiProfile((current) => ({
+          ...current,
+          targetRole: current.targetRole || job.title,
+          jobTitle: job.title,
+          companyName: job.company,
+          targetPlatform: job.source,
+          jobDescription: job.description,
+          jobUrls: job.jobUrl
+        }));
+        setAiResult(generatedAssets);
+      }
+      setSuccess(status === "accepted"
+        ? "Vaga arquivada em Aceitas com rascunhos do currículo e da carta. Revise-os antes de se candidatar."
+        : "Vaga arquivada em Recusadas.");
+    } catch (errorResponse) {
+      setError(errorResponse.response?.data?.message || errorResponse.message || "Não foi possível arquivar a decisão.");
+    } finally {
+      setJobDecisionLoading("");
     }
   };
 
@@ -1274,8 +1400,8 @@ function App() {
             <div>
               <h3>Buscar vagas compatíveis</h3>
               <p>
-                A busca usa somente o cargo e as competências do perfil. Os sites abrem em outra aba;
-                você faz login diretamente neles e decide se quer se candidatar.
+                As fontes públicas autorizadas são pesquisadas com base no currículo e nas competências.
+                Os portais que exigem login continuam abrindo em outra aba.
               </p>
             </div>
             {jobSearchLinks.length > 0 ? (
@@ -1305,10 +1431,165 @@ function App() {
               <p className="automation-note">Importe seu currículo ou informe o cargo e as competências para montar a busca.</p>
             )}
             <small className="automation-note">
-              As vagas aparecem nas páginas dos portais, não dentro deste painel. Entre diretamente nos sites; o login fica no seu navegador.
-              Depois, escolha uma vaga e cole a descrição no cadastro do currículo. O assistente não guarda senhas nem envia candidaturas.
+              A aderência é uma estimativa, não uma garantia. Ao aceitar, o sistema prepara rascunhos fiéis às informações fornecidas;
+              confira-os e conclua a candidatura no site da vaga. O assistente não acessa sessões autenticadas, não guarda senhas e não envia candidaturas.
             </small>
           </div>
+
+          <section className="job-discovery-panel">
+            <div className="job-discovery-header">
+              <div>
+                <h3>Vagas encontradas para seu perfil</h3>
+                <p>Fontes públicas: Jobicy e Remote OK. Os feeds são atualizados no máximo uma vez por hora.</p>
+              </div>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleSearchJobListings}
+                disabled={jobSearchLoading}
+              >
+                {jobSearchLoading ? "Buscando vagas..." : "Buscar vagas agora"}
+              </button>
+            </div>
+
+            <div className="job-board-tabs" role="tablist" aria-label="Vagas encontradas e arquivadas">
+              {[
+                { id: "new", label: `Novas (${discoveredJobs.length})` },
+                { id: "accepted", label: `Aceitas (${jobDecisions.filter((job) => job.status === "accepted").length})` },
+                { id: "rejected", label: `Recusadas (${jobDecisions.filter((job) => job.status === "rejected").length})` }
+              ].map((tab) => (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={jobBoardView === tab.id}
+                  className={`job-board-tab ${jobBoardView === tab.id ? "active" : ""}`}
+                  key={tab.id}
+                  onClick={() => setJobBoardView(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {jobSearchWarnings.length > 0 && (
+              <div className="job-feed-warnings" role="status">
+                {jobSearchWarnings.map((warning) => <p key={warning}>{warning}</p>)}
+              </div>
+            )}
+
+            {jobFeedSources.length > 0 && (
+              <p className="job-feed-attribution">
+                Fontes: {jobFeedSources.map((source, index) => (
+                  <span key={source.name}>
+                    {index > 0 ? " · " : ""}
+                    <a href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a>
+                    {source.stale ? " (dados salvos)" : ""}
+                  </span>
+                ))}
+              </p>
+            )}
+
+            {jobBoardView === "new" && (
+              <div className="job-card-list">
+                {discoveredJobs.length === 0 ? (
+                  <p className="empty-state">
+                    {jobSearchLoading ? "Consultando as fontes autorizadas..." : "Clique em “Buscar vagas agora” para encontrar oportunidades."}
+                  </p>
+                ) : discoveredJobs.map((job) => {
+                  const decisionId = `${job.source}:${job.sourceId}`;
+                  const isSaving = jobDecisionLoading === decisionId;
+                  return (
+                    <article className="job-card" key={decisionId}>
+                      <div className="job-card-heading">
+                        <div>
+                          <h4>{job.title}</h4>
+                          <p>{job.company} · {job.location || "Remoto"}</p>
+                        </div>
+                        <strong className="job-fit-score">{job.fitScore}% <small>aderência estimada</small></strong>
+                      </div>
+                      <div className="job-card-meta">
+                        <span>{job.source}</span>
+                        {job.jobType && <span>{job.jobType}</span>}
+                        {job.salary && <span>{job.salary}</span>}
+                      </div>
+                      <p className="job-card-excerpt">{job.excerpt || "Descrição não disponível."}</p>
+                      {job.matchedTerms?.length > 0 && (
+                        <div className="ai-pills" aria-label="Competências encontradas">
+                          {job.matchedTerms.slice(0, 8).map((term) => <span className="ai-pill" key={term}>{term}</span>)}
+                        </div>
+                      )}
+                      {job.missingRequired?.length > 0 && (
+                        <p className="job-card-gap">
+                          Não localizados no currículo: {job.missingRequired.slice(0, 5).join(", ")}.
+                        </p>
+                      )}
+                      <details className="job-card-description">
+                        <summary>Ver descrição da vaga</summary>
+                        <pre>{job.description}</pre>
+                      </details>
+                      <div className="job-card-actions">
+                        <a href={job.jobUrl} target="_blank" rel="noopener noreferrer" className="secondary-button">
+                          Ver vaga em {job.source}
+                        </a>
+                        <button
+                          type="button"
+                          className="primary-button small"
+                          onClick={() => handleJobDecision(job, "accepted")}
+                          disabled={Boolean(jobDecisionLoading)}
+                        >
+                          {isSaving ? "Preparando rascunho..." : "Aceitar"}
+                        </button>
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => handleJobDecision(job, "rejected")}
+                          disabled={Boolean(jobDecisionLoading)}
+                        >
+                          Recusar
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+
+            {jobBoardView !== "new" && (
+              <div className="job-card-list">
+                {jobDecisions.filter((job) => job.status === jobBoardView).length === 0 ? (
+                  <p className="empty-state">
+                    Nenhuma vaga {jobBoardView === "accepted" ? "aceita" : "recusada"} foi arquivada.
+                  </p>
+                ) : jobDecisions.filter((job) => job.status === jobBoardView).map((job) => (
+                  <article className="job-card archived-job-card" key={`${job.source}:${job.source_id}`}>
+                    <div className="job-card-heading">
+                      <div>
+                        <h4>{job.title}</h4>
+                        <p>{job.company} · {job.location || "Remoto"} · {job.source}</p>
+                      </div>
+                      <strong className="job-fit-score">{job.fit_score}% <small>aderência estimada</small></strong>
+                    </div>
+                    <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="job-archive-link">
+                      Abrir anúncio original
+                    </a>
+                    {job.status === "accepted" && (
+                      <details className="job-card-description">
+                        <summary>Ver rascunhos preparados</summary>
+                        <h5>Currículo adaptado</h5>
+                        <pre>{job.resume_snapshot || "Rascunho não disponível."}</pre>
+                        {job.cover_letter_snapshot && (
+                          <>
+                            <h5>Carta de apresentação</h5>
+                            <pre>{job.cover_letter_snapshot}</pre>
+                          </>
+                        )}
+                      </details>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
 
           <div className="import-grid">
             <label className="upload-box">

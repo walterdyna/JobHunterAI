@@ -14,6 +14,7 @@ const companyRoutes = require("./routes/companyRoutes");
 const vacancyRoutes = require("./routes/vacancyRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const jobDiscoveryRoutes = require("./routes/jobDiscoveryRoutes");
 
 const app = express();
 const frontendDist = path.resolve(__dirname, "..", "..", "frontend", "dist");
@@ -101,6 +102,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/vacancies", vacancyRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/job-discovery", jobDiscoveryRoutes);
 app.use("/api/ai", aiRoutes);
 
 if (fs.existsSync(frontendDist)) {
