@@ -469,6 +469,12 @@ test("job discovery caches public feeds, isolates decisions, and serves stale da
     assert.equal(secondUserSearch.jobs.length, 2);
     assert.equal(fetchCount, 2);
 
+    const noMatchSearch = await service.search({
+      resumeText: "Certified basket weaver and ceramic artist."
+    }, secondUserId);
+    assert.equal(noMatchSearch.jobs.length, 2);
+    assert.ok(noMatchSearch.jobs.every((job) => job.fitScore === 0 && job.matchedTerms.length === 0));
+
     const staleTime = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
     await database.run(
       "UPDATE job_feed_cache SET fetched_at = ?, attempted_at = ?",

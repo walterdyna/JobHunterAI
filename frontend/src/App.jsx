@@ -655,8 +655,9 @@ function App() {
       window.open(url, "_blank", "noopener,noreferrer");
     });
     setSuccess(searchLinks.length
-      ? "Currículo importado. Abri as buscas nos portais em novas abas. Entre diretamente nos sites; se algum redirecionar após o login, volte e clique em Buscar novamente."
-      : "Currículo importado. Informe o cargo e as competências para abrir buscas nos portais.");
+      ? "Currículo importado. A funcionária começou a buscar vagas públicas e abri buscas dos portais em novas abas."
+      : "Currículo importado. A funcionária começou a buscar vagas públicas; informe cargo e competências para abrir buscas nos portais.");
+    void handleSearchJobListings(importedProfile);
   };
 
   const reopenJobSearches = () => {
@@ -855,7 +856,7 @@ function App() {
     }
   };
 
-  const handleSearchJobListings = async () => {
+  const handleSearchJobListings = async (profile = aiProfile) => {
     setJobSearchLoading(true);
     setError("");
     setSuccess("");
@@ -863,8 +864,8 @@ function App() {
     try {
       const data = await searchJobListings({
         profile: {
-          ...aiProfile,
-          resumeText: String(aiProfile.resumeText || "").slice(0, 120000)
+          ...profile,
+          resumeText: String(profile.resumeText || "").slice(0, 120000)
         }
       }, { headers: authHeaders });
       setDiscoveredJobs(data.jobs || []);
@@ -872,8 +873,8 @@ function App() {
       setJobFeedSources(data.sources || []);
       setJobBoardView("new");
       setSuccess(data.jobs?.length
-        ? `${data.jobs.length} vagas compatíveis encontradas. A aderência é estimada e deve ser revisada.`
-        : "Nenhuma vaga compatível foi encontrada nas fontes disponíveis. Ajuste o perfil e tente novamente.");
+        ? `A funcionária encontrou ${data.jobs.length} vagas nas fontes públicas. Confira a aderência estimada em cada anúncio.`
+        : "As fontes não retornaram vagas novas. Tente novamente mais tarde ou revise as vagas já arquivadas.");
     } catch (errorResponse) {
       setError(errorResponse.response?.data?.message || "Não foi possível buscar vagas agora.");
     } finally {
@@ -1406,14 +1407,28 @@ function App() {
 
           <div className="job-search-panel">
             <div>
-              <h3>Entrar nos portais e buscar vagas</h3>
+              <h3>Nossa funcionária de vagas</h3>
               <p>
-                Entre diretamente nos sites abaixo. Depois abra a busca pelo seu cargo, escolha uma vaga e copie
-                a descrição para o campo de vaga mais abaixo, para preparar seu currículo.
+                Ela consulta vagas remotas públicas no Jobicy e Remote OK, compara os anúncios com seu currículo
+                e mostra os resultados no painel abaixo. A busca começa ao importar o currículo; também pode iniciá-la por este botão.
               </p>
             </div>
+            <div className="job-employee-callout">
+              <p>
+                Vagas de portais que exigem login não podem ser lidas automaticamente pelo site hospedado.
+                Para essas, entre no portal abaixo, escolha uma vaga e copie a descrição para adaptar seu currículo.
+              </p>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleSearchJobListings}
+                disabled={jobSearchLoading}
+              >
+                {jobSearchLoading ? "Funcionária buscando vagas..." : "Pedir à funcionária para buscar vagas"}
+              </button>
+            </div>
             <div className="job-login-group">
-              <strong>1. Entrar nos portais</strong>
+              <strong>Buscar manualmente em outros portais</strong>
               <div className="job-search-links">
                 {jobLoginSources.map((source) => (
                   <a
@@ -1430,7 +1445,7 @@ function App() {
             </div>
             {jobSearchLinks.length > 0 ? (
               <div className="job-login-group">
-                <strong>2. Buscar pelo cargo e pelas competências</strong>
+                <strong>Buscar pelo cargo e pelas competências</strong>
                 <div className="job-search-links">
                   {jobSearchLinks.map((source) => (
                     <a
@@ -1458,25 +1473,17 @@ function App() {
               <p className="automation-note">Importe seu currículo ou informe o cargo e as competências para montar as buscas.</p>
             )}
             <small className="automation-note">
-              O login é feito nos próprios portais e não é compartilhado com o JobHunter. O painel não lê essas sessões nem importa
-              vagas automaticamente; use as buscas acima e cole os dados da vaga. O assistente não guarda senhas nem envia candidaturas.
+              O login é feito nos próprios portais e não é compartilhado com o JobHunter. A funcionária não lê essas sessões,
+              não guarda senhas e não envia candidaturas.
             </small>
           </div>
 
           <section className="job-discovery-panel">
             <div className="job-discovery-header">
               <div>
-                <h3>Vagas encontradas para seu perfil</h3>
-                <p>Fontes públicas: Jobicy e Remote OK. Os feeds são atualizados no máximo uma vez por hora.</p>
+                <h3>Resultados da funcionária</h3>
+                <p>Jobicy e Remote OK; os feeds são atualizados no máximo uma vez por hora.</p>
               </div>
-              <button
-                type="button"
-                className="primary-button"
-                onClick={handleSearchJobListings}
-                disabled={jobSearchLoading}
-              >
-                {jobSearchLoading ? "Buscando vagas..." : "Buscar vagas agora"}
-              </button>
             </div>
 
             <div className="job-board-tabs" role="tablist" aria-label="Vagas encontradas e arquivadas">
@@ -1520,7 +1527,9 @@ function App() {
               <div className="job-card-list">
                 {discoveredJobs.length === 0 ? (
                   <p className="empty-state">
-                    {jobSearchLoading ? "Consultando as fontes autorizadas..." : "Clique em “Buscar vagas agora” para encontrar oportunidades."}
+                    {jobSearchLoading
+                      ? "A funcionária está consultando os feeds públicos..."
+                      : "Peça à funcionária para buscar vagas. Os resultados aparecerão aqui."}
                   </p>
                 ) : discoveredJobs.map((job) => {
                   const decisionId = `${job.source}:${job.sourceId}`;
@@ -1544,6 +1553,11 @@ function App() {
                         <div className="ai-pills" aria-label="Competências encontradas">
                           {job.matchedTerms.slice(0, 8).map((term) => <span className="ai-pill" key={term}>{term}</span>)}
                         </div>
+                      )}
+                      {job.matchedTerms?.length === 0 && (
+                        <p className="job-card-gap">
+                          Não foram encontrados termos em comum no currículo. Esta vaga foi incluída para revisão manual.
+                        </p>
                       )}
                       {job.missingRequired?.length > 0 && (
                         <p className="job-card-gap">

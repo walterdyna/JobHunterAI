@@ -258,7 +258,10 @@ async function search(profile, userId) {
   const jobs = availableFeeds.flatMap(({ feed }) => feed.jobs)
     .filter((job) => !decided.has(decisionKey(job.source, job.sourceId)))
     .map((job) => {
-      const fitAnalysis = analyzeJobFit(`${job.title}\n${job.description}`, candidateEvidence);
+      const fitAnalysis = analyzeJobFit(
+        `${job.title}\n${job.description}\n${job.jobType}`,
+        candidateEvidence
+      );
       return {
         ...job,
         fitScore: fitAnalysis.score,
@@ -267,7 +270,6 @@ async function search(profile, userId) {
         matchBasis: fitAnalysis.basis
       };
     })
-    .filter((job) => job.fitScore > 0 && job.matchedTerms.length > 0)
     .sort((left, right) => (
       right.fitScore - left.fitScore
       || right.publishedAt.localeCompare(left.publishedAt)

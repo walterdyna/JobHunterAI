@@ -44,6 +44,24 @@
   color: #dbeafe;
 }
 
+.job-employee-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.job-employee-callout p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 .job-discovery-panel {
   display: grid;
   gap: 1rem;
@@ -620,7 +638,8 @@
   }
 
   .job-discovery-header,
-  .job-card-heading {
+  .job-card-heading,
+  .job-employee-callout {
     align-items: flex-start;
     flex-direction: column;
   }
