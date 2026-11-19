@@ -630,7 +630,7 @@ function App() {
     setSuccess("Carta importada e aplicada ao perfil.");
   };
 
-  const importProfileOnly = () => {
+  const importProfileOnly = (openSearchLinks = true) => {
     if (!pendingProfileImport || pendingProfileImport.kind !== "resume") return;
 
     const { documents, profile } = pendingProfileImport;
@@ -655,12 +655,16 @@ function App() {
     setPendingProfileImport(null);
     setAiResult(null);
     setError("");
-    searchLinks.forEach(({ url }) => {
-      window.open(url, "_blank", "noopener,noreferrer");
-    });
-    setSuccess(searchLinks.length
+    if (openSearchLinks) {
+      searchLinks.forEach(({ url }) => {
+        window.open(url, "_blank", "noopener,noreferrer");
+      });
+    }
+    setSuccess(openSearchLinks && searchLinks.length
       ? "Currículo importado. A funcionária começou a buscar vagas públicas e abri buscas dos portais em novas abas."
-      : "Currículo importado. A funcionária começou a buscar vagas públicas; informe cargo e competências para abrir buscas nos portais.");
+      : searchLinks.length
+        ? "Currículo importado. A funcionária começou a buscar vagas públicas."
+        : "Currículo importado. A funcionária começou a buscar vagas públicas; informe cargo e competências para abrir buscas nos portais.");
     void searchJobsForProfile(importedProfile);
   };
 
@@ -901,7 +905,13 @@ function App() {
     }
   };
 
-  const handleSearchJobListings = () => searchJobsForProfile(aiProfile);
+  const handleSearchJobListings = () => {
+    if (pendingProfileImport?.kind === "resume") {
+      importProfileOnly(false);
+      return;
+    }
+    void searchJobsForProfile(aiProfile);
+  };
 
   const handleJobDecision = async (job, status) => {
     const decisionId = `${job.source}:${job.sourceId}`;
@@ -1445,7 +1455,11 @@ function App() {
                 onClick={handleSearchJobListings}
                 disabled={jobSearchLoading}
               >
-                {jobSearchLoading ? "Buscando..." : "Buscar vagas agora"}
+                {jobSearchLoading
+                  ? "Buscando..."
+                  : pendingProfileImport?.kind === "resume"
+                    ? "Importar currículo e buscar"
+                    : "Buscar vagas agora"}
               </button>
             </div>
             <div className="job-login-group">
@@ -1932,7 +1946,7 @@ function App() {
                       placeholder="Cole aqui os requisitos e as responsabilidades do anúncio escolhido."
                     />
                     <small className="automation-note">
-                      Para adaptar, informe o cargo e cole a descrição completa da vaga. O currículo original será mantido como referência. Se quiser apenas importar, use “Só importar currículo”.
+                      Para adaptar, informe o cargo e cole a descrição completa da vaga. O currículo original será mantido como referência. Para importar e buscar oportunidades, use “Importar currículo e buscar vagas”.
                     </small>
                   </div>
                 </>
@@ -1955,8 +1969,8 @@ function App() {
                     : "Confirmar importação"}
                 </button>
                 {pendingProfileImport.kind === "resume" && (
-                  <button type="button" className="secondary-button" onClick={importProfileOnly} disabled={aiLoading}>
-                    Só importar currículo
+                  <button type="button" className="primary-button" onClick={() => importProfileOnly()} disabled={aiLoading}>
+                    Importar currículo e buscar vagas
                   </button>
                 )}
                 <button type="button" className="secondary-button" onClick={() => setPendingProfileImport(null)} disabled={aiLoading}>Descartar</button>
