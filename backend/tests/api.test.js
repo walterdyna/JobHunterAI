@@ -454,6 +454,7 @@ test("job discovery caches public feeds, isolates decisions, and serves stale da
     ]);
     assert.equal(firstSearch.jobs.length, 2);
     assert.equal(concurrentSearch.jobs.length, 2);
+    assert.deepEqual(firstSearch.sources.map((source) => source.jobsAvailable), [1, 1]);
     assert.equal(fetchCount, 2);
 
     const rejectedJob = firstSearch.jobs.find((job) => job.source === "Jobicy");

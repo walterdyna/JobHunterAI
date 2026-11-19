@@ -250,6 +250,8 @@ function App() {
   const [jobDecisions, setJobDecisions] = useState([]);
   const [jobBoardView, setJobBoardView] = useState("new");
   const [jobSearchLoading, setJobSearchLoading] = useState(false);
+  const [jobSearchHasRun, setJobSearchHasRun] = useState(false);
+  const [jobSearchError, setJobSearchError] = useState("");
   const [jobDecisionLoading, setJobDecisionLoading] = useState("");
   const [jobSearchWarnings, setJobSearchWarnings] = useState([]);
   const [jobFeedSources, setJobFeedSources] = useState([]);
@@ -366,6 +368,8 @@ function App() {
     setJobDecisions([]);
     setJobSearchWarnings([]);
     setJobFeedSources([]);
+    setJobSearchHasRun(false);
+    setJobSearchError("");
     setError("");
     setSuccess("");
     localStorage.removeItem("jobhunter_token");
@@ -858,6 +862,8 @@ function App() {
 
   const handleSearchJobListings = async (profile = aiProfile) => {
     setJobSearchLoading(true);
+    setJobSearchHasRun(true);
+    setJobSearchError("");
     setError("");
     setSuccess("");
 
@@ -874,9 +880,11 @@ function App() {
       setJobBoardView("new");
       setSuccess(data.jobs?.length
         ? `A funcionária encontrou ${data.jobs.length} vagas nas fontes públicas. Confira a aderência estimada em cada anúncio.`
-        : "As fontes não retornaram vagas novas. Tente novamente mais tarde ou revise as vagas já arquivadas.");
+        : "As fontes estão disponíveis, mas não retornaram vagas novas para exibir.");
     } catch (errorResponse) {
-      setError(errorResponse.response?.data?.message || "Não foi possível buscar vagas agora.");
+      const message = errorResponse.response?.data?.message || "Não foi possível buscar vagas agora.";
+      setJobSearchError(message);
+      setError(message);
     } finally {
       setJobSearchLoading(false);
     }
@@ -1424,7 +1432,7 @@ function App() {
                 onClick={handleSearchJobListings}
                 disabled={jobSearchLoading}
               >
-                {jobSearchLoading ? "Funcionária buscando vagas..." : "Pedir à funcionária para buscar vagas"}
+                {jobSearchLoading ? "Buscando..." : "Buscar vagas agora"}
               </button>
             </div>
             <div className="job-login-group">
@@ -1505,6 +1513,12 @@ function App() {
               ))}
             </div>
 
+            {jobSearchError && (
+              <p className="job-search-error" role="alert">
+                A busca falhou: {jobSearchError}
+              </p>
+            )}
+
             {jobSearchWarnings.length > 0 && (
               <div className="job-feed-warnings" role="status">
                 {jobSearchWarnings.map((warning) => <p key={warning}>{warning}</p>)}
@@ -1517,6 +1531,7 @@ function App() {
                   <span key={source.name}>
                     {index > 0 ? " · " : ""}
                     <a href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a>
+                    {` (${source.jobsAvailable} anúncios no feed)`}
                     {source.stale ? " (dados salvos)" : ""}
                   </span>
                 ))}
@@ -1529,7 +1544,11 @@ function App() {
                   <p className="empty-state">
                     {jobSearchLoading
                       ? "A funcionária está consultando os feeds públicos..."
-                      : "Peça à funcionária para buscar vagas. Os resultados aparecerão aqui."}
+                      : jobSearchError
+                        ? "A busca falhou. Leia a mensagem acima para saber o motivo."
+                        : jobSearchHasRun
+                          ? "A busca terminou, mas as fontes não retornaram vagas novas. Confira os avisos ou tente novamente mais tarde."
+                          : "Clique em “Buscar vagas agora” para encontrar oportunidades nas fontes públicas."}
                   </p>
                 ) : discoveredJobs.map((job) => {
                   const decisionId = `${job.source}:${job.sourceId}`;

@@ -248,6 +248,9 @@ async function search(profile, userId) {
     .filter((item) => item.error)
     .map(({ source, error }) => `${source.name}: ${error.message}`);
   warnings.push(...availableFeeds.map(({ feed }) => feed.warning).filter(Boolean));
+  warnings.push(...availableFeeds
+    .filter(({ feed }) => feed.jobs.length === 0)
+    .map(({ source }) => `${source.name} não retornou anúncios nesta atualização.`));
 
   if (!availableFeeds.length) {
     throw unavailableError(warnings.join(" ") || "As fontes de vagas estão indisponíveis.");
@@ -283,7 +286,8 @@ async function search(profile, userId) {
       name: source.name,
       url: source.id === "jobicy" ? "https://jobicy.com/jobs-rss-feed" : "https://remoteok.com/",
       lastUpdated: feed.lastUpdated,
-      stale: Boolean(feed.stale)
+      stale: Boolean(feed.stale),
+      jobsAvailable: feed.jobs.length
     })),
     warnings
   };
