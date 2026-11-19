@@ -70,6 +70,14 @@ const jobSearchSources = [
   }
 ];
 
+const jobLoginSources = [
+  { name: "LinkedIn", url: "https://www.linkedin.com/login" },
+  { name: "Indeed", url: "https://secure.indeed.com/auth?hl=pt_BR&co=BR&continue=https%3A%2F%2Fbr.indeed.com%2F" },
+  { name: "InfoJobs", url: "https://www.infojobs.com.br/" },
+  { name: "Gupy", url: "https://portal.gupy.io/login" },
+  { name: "Catho", url: "https://www.catho.com.br/login/" }
+];
+
 function buildJobSearchLinks(profile) {
   const skills = Array.isArray(profile.skills)
     ? profile.skills
@@ -1398,15 +1406,16 @@ function App() {
 
           <div className="job-search-panel">
             <div>
-              <h3>Buscar vagas compatíveis</h3>
+              <h3>Entrar nos portais e buscar vagas</h3>
               <p>
-                As fontes públicas autorizadas são pesquisadas com base no currículo e nas competências.
-                Os portais que exigem login continuam abrindo em outra aba.
+                Entre diretamente nos sites abaixo. Depois abra a busca pelo seu cargo, escolha uma vaga e copie
+                a descrição para o campo de vaga mais abaixo, para preparar seu currículo.
               </p>
             </div>
-            {jobSearchLinks.length > 0 ? (
+            <div className="job-login-group">
+              <strong>1. Entrar nos portais</strong>
               <div className="job-search-links">
-                {jobSearchLinks.map((source) => (
+                {jobLoginSources.map((source) => (
                   <a
                     key={source.name}
                     className="secondary-button"
@@ -1414,25 +1423,43 @@ function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Buscar no {source.name}
+                    Entrar no {source.name}
                   </a>
                 ))}
-                {uploadedResumes.length > 0 && (
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={reopenJobSearches}
-                  >
-                    Abrir buscas novamente
-                  </button>
-                )}
+              </div>
+            </div>
+            {jobSearchLinks.length > 0 ? (
+              <div className="job-login-group">
+                <strong>2. Buscar pelo cargo e pelas competências</strong>
+                <div className="job-search-links">
+                  {jobSearchLinks.map((source) => (
+                    <a
+                      key={source.name}
+                      className="secondary-button"
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Buscar no {source.name}
+                    </a>
+                  ))}
+                  {uploadedResumes.length > 0 && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={reopenJobSearches}
+                    >
+                      Abrir buscas novamente
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
-              <p className="automation-note">Importe seu currículo ou informe o cargo e as competências para montar a busca.</p>
+              <p className="automation-note">Importe seu currículo ou informe o cargo e as competências para montar as buscas.</p>
             )}
             <small className="automation-note">
-              A aderência é uma estimativa, não uma garantia. Ao aceitar, o sistema prepara rascunhos fiéis às informações fornecidas;
-              confira-os e conclua a candidatura no site da vaga. O assistente não acessa sessões autenticadas, não guarda senhas e não envia candidaturas.
+              O login é feito nos próprios portais e não é compartilhado com o JobHunter. O painel não lê essas sessões nem importa
+              vagas automaticamente; use as buscas acima e cole os dados da vaga. O assistente não guarda senhas nem envia candidaturas.
             </small>
           </div>
 

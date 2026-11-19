@@ -38,6 +38,12 @@
   text-decoration: none;
 }
 
+.job-login-group {
+  display: grid;
+  gap: 0.55rem;
+  color: #dbeafe;
+}
+
 .job-discovery-panel {
   display: grid;
   gap: 1rem;
